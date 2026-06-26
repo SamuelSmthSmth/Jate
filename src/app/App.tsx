@@ -13,6 +13,9 @@ import { useJobs } from "../hooks/useJobs";
 import { loginWithEmail, registerWithEmail } from "../hooks/useEmailAuth";
 import JobCard from "./components/JobCard";
 import JobCalendar from "./components/JobCalendar";
+import FriendsTab from "./components/FriendsTab";
+import SharedListsTab from "./components/SharedListsTab";
+import JobCalendar from "./components/JobCalendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,16 +84,9 @@ const PAGE_TITLES: Record<NavItem, string> = {
 
 // ─── Seed data (friends/lists only — jobs come from Firestore) ────────────────
 
-const SEED_FRIENDS: Friend[] = [
-  { id: "f1", name: "Maya Patel",  code: "jt-mx71p", initials: "MP", color: "bg-purple-100 text-purple-700" },
-  { id: "f2", name: "Jordan Lee",  code: "jt-jl39k", initials: "JL", color: "bg-teal-100 text-teal-700"    },
-  { id: "f3", name: "Sam Rivera",  code: "jt-sr22v", initials: "SR", color: "bg-orange-100 text-orange-700" },
-];
 
-const SEED_LISTS: SharedList[] = [
-  { id: "sl1", name: "Sweaty SWE Grinds 2026", memberIds: ["f1", "f2"], createdAt: "2026-06-15" },
-  { id: "sl2", name: "Design Roles NYC",        memberIds: ["f3"],       createdAt: "2026-06-20" },
-];
+
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -327,14 +323,7 @@ export default function App() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // Friends state (local until a useFriends hook is added)
-  const [friends, setFriends] = useState<Friend[]>(SEED_FRIENDS);
-  const [newFriendCode, setNewFriendCode] = useState("");
 
-  // Shared lists state (local until a useSharedLists hook is added)
-  const [sharedLists, setSharedLists] = useState<SharedList[]>(SEED_LISTS);
-  const [newListName, setNewListName] = useState("");
-  const [newListMembers, setNewListMembers] = useState<string[]>([]);
 
   // Sidebar quick-join
   const [friendCode, setFriendCode] = useState("");
@@ -376,42 +365,6 @@ export default function App() {
     if (sortKey === key) { setSortDir((d) => d === "asc" ? "desc" : "asc"); return; }
     setSortKey(key);
     setSortDir(key === "deadline" ? "asc" : "desc");
-  }
-
-  // ── Friend handlers ─────────────────────────────────────────────────────────
-
-  function handleAddFriend() {
-    const code = newFriendCode.trim();
-    if (!code || friends.some((f) => f.code === code)) return;
-    const names = ["Alex Kim", "Chris Wang", "Taylor Moore", "Jamie Chen", "Drew Park"];
-    const name = names[Math.floor(Math.random() * names.length)];
-    const initials = name.split(" ").map((w) => w[0]).join("");
-    const colors = ["bg-cyan-100 text-cyan-700", "bg-lime-100 text-lime-700", "bg-fuchsia-100 text-fuchsia-700"];
-    setFriends((p) => [...p, {
-      id: `f-${Date.now()}`, name, code, initials,
-      color: colors[Math.floor(Math.random() * colors.length)],
-    }]);
-    setNewFriendCode("");
-  }
-
-  function handleRemoveFriend(id: string) {
-    setFriends((p) => p.filter((f) => f.id !== id));
-    setSharedLists((p) => p.map((l) => ({ ...l, memberIds: l.memberIds.filter((m) => m !== id) })));
-  }
-
-  // ── Shared list handlers ─────────────────────────────────────────────────────
-
-  function toggleListMember(id: string) {
-    setNewListMembers((p) => p.includes(id) ? p.filter((m) => m !== id) : [...p, id]);
-  }
-
-  function handleCreateList() {
-    if (!newListName.trim()) return;
-    setSharedLists((p) => [{
-      id: Date.now().toString(), name: newListName.trim(),
-      memberIds: [...newListMembers], createdAt: new Date().toISOString().slice(0, 10),
-    }, ...p]);
-    setNewListName(""); setNewListMembers([]);
   }
 
   // ── Display name update ─────────────────────────────────────────────────────
@@ -729,160 +682,10 @@ export default function App() {
         )}
 
         {/* ══════════════ FRIENDS & SHARED GROUPS ══════════════ */}
-        {activeNav === "friends" && (
-          <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
-            <div className="max-w-xl flex flex-col gap-6">
-              {/* Add Friend */}
-              <div className="border border-border rounded-lg p-5 bg-card">
-                <p className="text-xs font-semibold text-foreground mb-3">Add a Friend</p>
-                <div className="flex gap-2">
-                  <input type="text" value={newFriendCode}
-                    onChange={(e) => setNewFriendCode(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddFriend()}
-                    placeholder="Enter 6-digit Friend Code"
-                    className="flex-1 px-3 py-2 rounded-md border border-border bg-input-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    style={{ fontFamily: "'Geist Mono', monospace" }} />
-                  <button onClick={handleAddFriend} disabled={!newFriendCode.trim()}
-                    className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Connected Friends */}
-              <div>
-                <SectionLabel>Connected Friends ({friends.length})</SectionLabel>
-                {friends.length === 0 ? (
-                  <div className="border border-border rounded-lg p-6 text-center">
-                    <p className="text-sm text-muted-foreground">No friends added yet.</p>
-                  </div>
-                ) : (
-                  <div className="border border-border rounded-lg overflow-hidden">
-                    {friends.map((friend, idx) => (
-                      <div key={friend.id}
-                        className={`flex items-center gap-3 px-4 py-3 bg-card hover:bg-secondary transition-colors ${
-                          idx < friends.length - 1 ? "border-b border-border" : ""
-                        }`}>
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${friend.color}`}>
-                          {friend.initials}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{friend.name}</p>
-                          <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Geist Mono', monospace" }}>
-                            {friend.code}
-                          </p>
-                        </div>
-                        <button onClick={() => handleRemoveFriend(friend.id)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors shrink-0">
-                          <UserMinus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Create Shared Group */}
-              <div className="border border-border rounded-lg p-5 bg-card">
-                <p className="text-xs font-semibold text-foreground mb-4">Create a Shared Group</p>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-foreground">Group Name</label>
-                    <input type="text" value={newListName}
-                      onChange={(e) => setNewListName(e.target.value)}
-                      placeholder="e.g. Design Internships 2026"
-                      className="px-3 py-2 rounded-md border border-border bg-input-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground block mb-2">Invite Friends</label>
-                    {friends.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic px-1">
-                        Add friends above to invite them to a group.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        {friends.map((friend) => (
-                          <label key={friend.id}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-muted transition-colors cursor-pointer">
-                            <input type="checkbox"
-                              checked={newListMembers.includes(friend.id)}
-                              onChange={() => toggleListMember(friend.id)}
-                              className="w-3.5 h-3.5 rounded border-border accent-primary shrink-0" />
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${friend.color}`}>
-                              {friend.initials}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm font-medium text-foreground">{friend.name}</span>
-                              <span className="text-xs text-muted-foreground ml-2"
-                                style={{ fontFamily: "'Geist Mono', monospace" }}>{friend.code}</span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button onClick={handleCreateList} disabled={!newListName.trim()}
-                    className="w-full py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed mt-1">
-                    Create Shared List
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeNav === "friends" && <FriendsTab userId={user.uid} />}
 
         {/* ══════════════ SHARED LISTS ══════════════ */}
-        {activeNav === "shared-lists" && (
-          <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
-            {sharedLists.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-center">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Users className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-medium text-foreground">No shared lists yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Go to Friends to create your first shared group.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3 max-w-xl">
-                {sharedLists.map((list) => {
-                  const members = friends.filter((f) => list.memberIds.includes(f.id));
-                  return (
-                    <div key={list.id}
-                      className="border border-border rounded-lg px-5 py-4 bg-card hover:bg-secondary transition-colors cursor-pointer">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{list.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5"
-                             style={{ fontFamily: "'Geist Mono', monospace" }}>
-                            Created {formatDate(list.createdAt)}
-                          </p>
-                        </div>
-                        <div className="flex -space-x-1.5 shrink-0 mt-0.5">
-                          {members.length === 0
-                            ? <span className="text-xs text-muted-foreground italic">No members</span>
-                            : members.map((m) => (
-                              <div key={m.id}
-                                className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold border-2 border-card ${m.color}`}
-                                title={m.name}>
-                                {m.initials}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                      {members.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {members.length} member{members.length !== 1 ? "s" : ""}: {members.map((m) => m.name).join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {activeNav === "shared-lists" && <SharedListsTab userId={user.uid} />}
 
         {/* ══════════════ SETTINGS ══════════════ */}
         {activeNav === "settings" && (
