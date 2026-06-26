@@ -15,7 +15,6 @@ import JobCard from "./components/JobCard";
 import JobCalendar from "./components/JobCalendar";
 import FriendsTab from "./components/FriendsTab";
 import SharedListsTab from "./components/SharedListsTab";
-import JobCalendar from "./components/JobCalendar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -361,6 +360,51 @@ export default function App() {
     setShowAdd(false);
   }
 
+  async function seedDemoData() {
+    const demoJobs = [
+      {
+        company: "Stripe",
+        role: "Product Designer",
+        location: "Remote",
+        status: "Applied",
+        deadline: "2026-07-30",
+        appliedDate: "2026-06-10",
+        postingUrl: "stripe.com/jobs/product-designer-2026",
+        portalUrl: "jobs.lever.co/stripe/apply/pd",
+        salary: "110000",
+        salaryType: "Paid",
+        notes: "Found via LinkedIn. Strong interest in payments UX.",
+      },
+      {
+        company: "Airbnb",
+        role: "Data Analyst",
+        location: "San Francisco, CA",
+        status: "Rejected",
+        deadline: "2026-06-20",
+        appliedDate: "2026-05-15",
+      },
+      {
+        company: "Linear",
+        role: "Growth Engineer",
+        location: "Remote",
+        status: "Waiting",
+        deadline: "2026-08-01",
+        appliedDate: "2026-06-18",
+      },
+      {
+        company: "Notion",
+        role: "Product Manager",
+        location: "New York, NY",
+        status: "Interviewing",
+        deadline: "2026-07-22",
+        appliedDate: "2026-06-05",
+      }
+    ];
+    for (const j of demoJobs) {
+      await addJob(j);
+    }
+  }
+
   function handleSortClick(key: SortKey) {
     if (sortKey === key) { setSortDir((d) => d === "asc" ? "desc" : "asc"); return; }
     setSortKey(key);
@@ -653,9 +697,14 @@ export default function App() {
                     <Briefcase className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium text-foreground">No jobs found</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1 mb-4">
                     {filter === "All" ? 'Add your first application with "+ Add Job"' : `No ${filter} applications yet`}
                   </p>
+                  {filter === "All" && (
+                    <button onClick={seedDemoData} className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-muted transition-colors border border-border">
+                      Load Demo Data
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="job-list border border-border rounded-lg overflow-hidden">
