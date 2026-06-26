@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Briefcase, Users, Settings, Link2, Plus,
+  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus,
   CalendarDays, X, Moon, Sun,
-  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check,
+  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, Copy, FileText, Share2,
 } from "lucide-react";
 import Papa from "papaparse";
 import { updateProfile } from "firebase/auth";
@@ -14,14 +15,14 @@ import { useJobs } from "../hooks/useJobs";
 import { loginWithEmail, registerWithEmail } from "../hooks/useEmailAuth";
 import JobCard from "./components/JobCard";
 import JobCalendar from "./components/JobCalendar";
+
 import FriendsTab from "./components/FriendsTab";
-import SharedListsTab from "./components/SharedListsTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Status = "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
 type SalaryType = "Paid" | "Volunteer";
-type NavItem = "my-jobs" | "calendar" | "friends" | "shared-lists" | "settings";
+type NavItem = "my-jobs" | "calendar" | "friends" | "docs" | "settings";
 type Filter = "All" | Status;
 type SortKey = "deadline" | "salary";
 
@@ -53,20 +54,12 @@ type Friend = {
   color: string;
 };
 
-type SharedList = {
-  id: string;
-  name: string;
-  memberIds: string[];
-  createdAt: string;
-};
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const navItems: { id: NavItem; label: string; icon: typeof Briefcase }[] = [
   { id: "my-jobs",      label: "My Jobs",     icon: Briefcase    },
   { id: "calendar",     label: "Calendar",     icon: CalendarDays },
   { id: "friends",      label: "Friends",      icon: UserPlus     },
-  { id: "shared-lists", label: "Shared Lists", icon: Users        },
   { id: "settings",     label: "Settings",     icon: Settings     },
 ];
 
@@ -77,8 +70,7 @@ const EMPTY_FORM = { company: "", role: "", location: "", status: "Applied" as S
 const PAGE_TITLES: Record<NavItem, string> = {
   "my-jobs":      "My Jobs",
   "calendar":     "Calendar",
-  "friends":      "Friends & Shared Groups",
-  "shared-lists": "Shared Lists",
+  "friends":      "Friends",
   "settings":     "Settings",
 };
 
@@ -139,14 +131,25 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
 function LoadingScreen() {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setExpanded(true);
+    }, 400); // slight delay before expanding
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="size-full flex items-center justify-center bg-background"
          style={{ fontFamily: "'Geist', sans-serif" }}>
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-          <span className="text-primary-foreground text-base font-bold">J</span>
+      <div className={`h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${expanded ? "w-24" : "w-10"}`}>
+        <div className="flex items-center justify-center select-none font-bold text-base text-primary-foreground">
+          <span>J</span>
+          <div className={`flex items-center transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${expanded ? "max-w-[60px] opacity-100 translate-x-0" : "max-w-0 opacity-0 -translate-x-4"}`}>
+            <span className="tracking-tight pl-0.5">ATE</span>
+          </div>
         </div>
-        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     </div>
   );
@@ -310,12 +313,25 @@ function LoginScreen({
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 export default function App() {
+  useEffect(() => {
+    // Initialize theme and accent color on app load
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+    const savedAccent = localStorage.getItem('accentColor');
+    if (savedAccent) {
+      document.documentElement.style.setProperty('--accent-hex', savedAccent);
+    }
+  }, []);
   const { user, loading, loginWithGoogle, logout } = useAuth();
-  const { jobs, addJob, updateJob, deleteJob } = useJobs(user?.uid ?? null);
+  const { jobs, addJob, updateJob, archiveJob, restoreJob, hardDeleteJob } = useJobs(user?.uid ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [dark, setDark] = useState(false);
   const [activeNav, setActiveNav] = useState<NavItem>("my-jobs");
+  const [copiedIcal, setCopiedIcal] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
 
   // My Jobs UI state
   const [filter, setFilter] = useState<Filter>("All");
@@ -445,6 +461,14 @@ export default function App() {
     setSortDir(key === "deadline" ? "asc" : "desc");
   }
 
+  async function updatePrivacy(uid: string, isPublic: boolean) {
+    try {
+      await updateDoc(doc(db, "users", uid), { isPublic });
+    } catch (e) {
+      console.error("Error updating privacy:", e);
+    }
+  }
+
   // ── Display name update ─────────────────────────────────────────────────────
 
   async function handleSaveName() {
@@ -508,7 +532,7 @@ export default function App() {
               className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm w-full text-left transition-colors ${
                 activeNav === id
                   ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
               }`}>
               <Icon className="w-4 h-4 shrink-0" />{label}
             </button>
@@ -560,7 +584,7 @@ export default function App() {
               className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               style={{ fontFamily: "'Geist Mono', monospace" }} />
             <button onClick={() => setFriendCode("")}
-              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity shrink-0">
+              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out shrink-0">
               Join
             </button>
           </div>
@@ -584,6 +608,11 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             {activeNav === "my-jobs" && (
+              <button onClick={() => { setSelectMode(!selectMode); setSelectedJobs(new Set()); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-opacity border ${selectMode ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent text-foreground border-border hover:bg-muted'}`}>
+                {selectMode ? 'Cancel' : 'Select'}
+              </button>
+            )}
+            {activeNav === "my-jobs" && (
               <Dialog.Root open={showAdd} onOpenChange={setShowAdd}>
                 <Dialog.Trigger asChild>
                   <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
@@ -597,7 +626,7 @@ export default function App() {
                     style={{ fontFamily: "'Geist', sans-serif" }}>
                     <div className="flex items-center justify-between mb-5">
                       <Dialog.Title className="text-base font-semibold text-foreground">Add Application</Dialog.Title>
-                      <Dialog.Close className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                      <Dialog.Close className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out">
                         <X className="w-4 h-4" />
                       </Dialog.Close>
                     </div>
@@ -618,6 +647,15 @@ export default function App() {
                             className="px-3 py-2 rounded-md border border-border bg-input-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
                         </div>
                       </div>
+
+                      <div className="flex flex-col gap-1.5 mb-4">
+                        <label className="text-[11px] font-medium text-foreground">Status</label>
+                        <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })}
+                          className="px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+                          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-medium text-foreground">Location</label>
@@ -653,7 +691,7 @@ export default function App() {
                     </div>
                     <div className="flex gap-2 justify-end mt-5 pt-4 border-t border-border">
                       <Dialog.Close asChild>
-                        <button className="px-4 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        <button className="px-4 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out">
                           Cancel
                         </button>
                       </Dialog.Close>
@@ -667,8 +705,16 @@ export default function App() {
                 </Dialog.Portal>
               </Dialog.Root>
             )}
-            <button onClick={() => setDark((d) => !d)}
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            <button onClick={() => {
+              const toggle = () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                setDark(isDark);
+              };
+              if (!document.startViewTransition) toggle();
+              else document.startViewTransition(() => toggle());
+            }}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
               title={dark ? "Light mode" : "Dark mode"}>
               {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -676,8 +722,13 @@ export default function App() {
         </div>
 
         {/* ══════════════ MY JOBS ══════════════ */}
+        <AnimatePresence mode="wait">
         {activeNav === "my-jobs" && (
-          <>
+          <motion.div
+            key="my-jobs"
+            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
+            className="flex-1 flex flex-col h-full overflow-hidden"
+          >
             {/* Filter + Sort row */}
             <div className="px-6 md:px-8 pb-4 flex items-center gap-2 flex-wrap">
               <div className="flex gap-1 flex-wrap flex-1 min-w-0">
@@ -686,7 +737,7 @@ export default function App() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                       filter === f
                         ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
                     }`}>
                     {f}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
@@ -709,19 +760,19 @@ export default function App() {
                       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                         sortKey === key
                           ? "border-primary/40 bg-accent text-accent-foreground"
-                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                          : "border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
                       }`} style={{ fontFamily: "'Geist Mono', monospace" }}>
                       <ArrowUpDown className="w-3 h-3" />{label}
                     </button>
                   );
                 })}
                 <button onClick={() => exportCSV(filtered)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
                   style={{ fontFamily: "'Geist Mono', monospace" }}>
                   <Download className="w-3 h-3" />Export CSV
                 </button>
                 <button onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
                   style={{ fontFamily: "'Geist Mono', monospace" }}>
                   <Upload className="w-3 h-3" />Import CSV
                 </button>
@@ -741,107 +792,265 @@ export default function App() {
                     {filter === "All" ? 'Add your first application with "+ Add Job"' : `No ${filter} applications yet`}
                   </p>
                   {filter === "All" && (
-                    <button onClick={seedDemoData} className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-muted transition-colors border border-border">
+                    <button onClick={seedDemoData} className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out border border-border">
                       Load Demo Data
                     </button>
                   )}
                 </div>
               ) : (
                 <div className="job-list border border-border rounded-lg overflow-hidden">
+                  <AnimatePresence mode="popLayout">
                   {filtered.map((job, idx) => (
                     <JobCard
                       key={job.id}
                       job={job}
                       updateJob={updateJob}
-                      deleteJob={deleteJob}
+                      archiveJob={archiveJob}
                       isLast={idx === filtered.length - 1}
                     />
                   ))}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
-          </>
+          </motion.div>
         )}
 
         {/* ══════════════ CALENDAR ══════════════ */}
         {activeNav === "calendar" && (
-          <div className="flex-1 overflow-hidden px-6 md:px-8 pb-8 pt-2">
+          <motion.div
+            key="calendar"
+            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
+            className="flex-1 overflow-hidden px-6 md:px-8 pb-8 pt-2"
+          >
             <JobCalendar jobs={typedJobs} />
-          </div>
+          </motion.div>
         )}
 
         {/* ══════════════ FRIENDS & SHARED GROUPS ══════════════ */}
-        {activeNav === "friends" && <FriendsTab userId={user.uid} />}
+        {activeNav === "friends" && (
+          <motion.div key="friends" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col h-full overflow-hidden">
+            <FriendsTab userId={user.uid} />
+          </motion.div>
+        )}
 
-        {/* ══════════════ SHARED LISTS ══════════════ */}
-        {activeNav === "shared-lists" && <SharedListsTab userId={user.uid} />}
+
 
         {/* ══════════════ SETTINGS ══════════════ */}
         {activeNav === "settings" && (
-          <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8">
-            <div className="max-w-md flex flex-col gap-4">
-              <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-
-                {/* Display name — editable */}
-                <div className="flex items-center justify-between px-5 py-4 bg-card gap-3">
-                  <span className="text-sm text-muted-foreground shrink-0">Display name</span>
-                  {editingName ? (
-                    <div className="flex items-center gap-2 flex-1 justify-end">
-                      <input
-                        autoFocus
-                        value={nameInput}
-                        onChange={(e) => setNameInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
-                        className="flex-1 max-w-[200px] px-2.5 py-1 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-right"
-                      />
-                      <button onClick={handleSaveName} disabled={savingName}
-                        className="p-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50">
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => { setEditingName(false); setNameInput(user.displayName ?? ""); }}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">{user.displayName ?? "—"}</span>
-                      <button onClick={() => { setEditingName(true); setNameInput(user.displayName ?? ""); }}
-                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
+            className="flex-1 overflow-y-auto px-6 md:px-8 pb-24 pt-4"
+          >
+            <div className="max-w-xl mx-auto flex flex-col gap-8">
+              
+              {/* Profile Section */}
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-foreground">Profile Settings</h2>
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                  {/* Display name */}
+                  <div className="flex items-center justify-between px-5 py-4 gap-3">
+                    <span className="text-sm text-muted-foreground shrink-0">Display name</span>
+                    {editingName ? (
+                      <div className="flex items-center gap-2 flex-1 justify-end">
+                        <input
+                          autoFocus
+                          value={nameInput}
+                          onChange={(e) => setNameInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                          className="flex-1 max-w-[200px] px-2.5 py-1 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-right"
+                        />
+                        <button onClick={handleSaveName} disabled={savingName}
+                          className="p-1.5 rounded-md bg-accent text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-50">
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => { setEditingName(false); setNameInput(user.displayName ?? ""); }}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{user.displayName ?? "—"}</span>
+                        <button onClick={() => { setEditingName(true); setNameInput(user.displayName ?? ""); }}
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {/* Email */}
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="text-sm font-medium text-foreground">{user.email ?? "—"}</span>
+                  </div>
+                  {/* Share code */}
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <span className="text-sm text-muted-foreground">Your share code</span>
+                    <span className="text-sm font-medium text-foreground" style={{ fontFamily: "'Geist Mono', monospace" }}>
+                      {user.friendCode ?? "—"}
+                    </span>
+                  </div>
                 </div>
-
-                {/* Email — read only */}
-                <div className="flex items-center justify-between px-5 py-4 bg-card">
-                  <span className="text-sm text-muted-foreground">Email</span>
-                  <span className="text-sm font-medium text-foreground">{user.email ?? "—"}</span>
-                </div>
-
-                {/* Share code — read only, mono */}
-                <div className="flex items-center justify-between px-5 py-4 bg-card">
-                  <span className="text-sm text-muted-foreground">Your share code</span>
-                  <span className="text-sm font-medium text-foreground"
-                    style={{ fontFamily: "'Geist Mono', monospace" }}>
-                    {user.friendCode ?? "—"}
-                  </span>
-                </div>
-
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                  Share your code with friends so they can view your job list.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Share your code with friends so they can view your job list.
-              </p>
-              <button onClick={logout}
-                className="flex items-center gap-2 px-4 py-2 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-fit">
-                <LogOut className="w-4 h-4" />Sign out
-              </button>
+
+              {/* Privacy Section */}
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-foreground">Privacy</h2>
+                <div className="bg-card rounded-lg border border-border p-5 flex items-center justify-between shadow-sm">
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground">Public Profile</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Allow friends to view my personal job board.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={user?.isPublic !== false} onChange={(e) => updatePrivacy(user.uid, e.target.checked)} />
+                    <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Appearance Section */}
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-foreground">Appearance</h2>
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                  {/* Dark Mode */}
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Dark Mode</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Toggle OLED dark mode</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const toggle = () => {
+                          const isDark = document.documentElement.classList.toggle('dark');
+                          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                          setDark(isDark);
+                        };
+                        if (!document.startViewTransition) toggle();
+                        else document.startViewTransition(() => toggle());
+                      }}
+                      className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out flex items-center gap-2"
+                    >
+                      <Moon className="w-4 h-4 hidden dark:block" />
+                      <Sun className="w-4 h-4 block dark:hidden" />
+                      Toggle Theme
+                    </button>
+                  </div>
+                  {/* Accent Color */}
+                  <div className="flex flex-col gap-4 px-5 py-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Accent Color</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Customize your app's primary color</p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { label: "Generic", colors: ["#3b82f6", "#a855f7", "#ef4444", "#22c55e", "#f59e0b"] },
+                        { label: "Pastel", colors: ["#fbcfe8", "#a7f3d0", "#ddd6fe", "#fcd34d", "#bbf7d0"] },
+                        { label: "Muted", colors: ["#64748b", "#78716c", "#71717a", "#737373", "#57534e"] }
+                      ].map(group => (
+                        <div key={group.label} className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-muted-foreground w-14">{group.label}</span>
+                          <div className="flex gap-2">
+                            {group.colors.map(color => (
+                              <button
+                                key={color}
+                                onClick={() => {
+                                  document.documentElement.style.setProperty('--accent-hex', color);
+                                  localStorage.setItem('accentColor', color);
+                                  // trigger re-render hack by updating an unused state or similar if needed, 
+                                  // but setting the property works natively for css. We could just rely on that.
+                                }}
+                                className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 active:scale-95 transition-transform"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* External Calendar Sync */}
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-foreground">External Calendar Sync</h2>
+                <div className="bg-card rounded-lg border border-border p-5 flex flex-col gap-4 shadow-sm">
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground">Subscribe via iCal</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Paste this link into Google Calendar (Other Calendars → From URL) or Apple Calendar to sync your application tracking timeline automatically.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={`${window.location.origin}/api/calendar?user=${user.uid}`}
+                      className="flex-1 px-3 py-2 rounded-md border border-border bg-input-background text-sm text-muted-foreground focus:outline-none font-mono text-xs overflow-hidden text-ellipsis"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/api/calendar?user=${user.uid}`);
+                        setCopiedIcal(true);
+                        setTimeout(() => setCopiedIcal(false), 2000);
+                      }}
+                      className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 whitespace-nowrap"
+                    >
+                      {copiedIcal ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copiedIcal ? "Copied!" : "Copy Link"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <button onClick={logout}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-red-50 text-red-600 text-sm font-medium hover:bg-red-100 transition-colors w-fit dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-100 dark:border-red-900/30">
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
+
             </div>
+          </motion.div>
+        )}
+        </AnimatePresence>
+
+        {/* Bulk Share FAB */}
+        {activeNav === "my-jobs" && selectMode && selectedJobs.size > 0 && (
+          <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-40">
+            <button onClick={handleBulkShare} className="flex items-center gap-2 px-6 py-3 rounded-full bg-accent text-accent-foreground shadow-lg hover:opacity-90 transition-opacity font-medium">
+              <Share2 className="w-4 h-4" />
+              Share {selectedJobs.size} Selected {selectedJobs.size === 1 ? 'Job' : 'Jobs'}
+            </button>
           </div>
         )}
 
       </main>
+      {/* Bottom Navigation (Mobile) */}
+      <div className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-background dark:bg-zinc-900 border-t border-border flex justify-around items-center h-16 px-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeNav === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveNav(item.id)}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+                isActive ? "text-accent" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

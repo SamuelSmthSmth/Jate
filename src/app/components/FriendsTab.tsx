@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { UserMinus } from "lucide-react";
-import { useFriends, addFriendByCode } from "../../hooks/useSocial";
-import { doc, updateDoc, arrayRemove } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { UserMinus, ArrowLeft } from "lucide-react";
+import { useFriends, addFriendByCode, FriendProfile } from "../../hooks/useSocial";
+import { doc, updateDoc, arrayRemove, query, collection, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
+import JobCard from "./JobCard";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -15,9 +16,29 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export default function FriendsTab({ userId }: { userId: string }) {
   const { friends, loading } = useFriends(userId);
+
   const [newFriendCode, setNewFriendCode] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [viewingFriend, setViewingFriend] = useState<FriendProfile | null>(null);
+  const [friendJobs, setFriendJobs] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!viewingFriend) {
+      setFriendJobs([]);
+      return;
+    }
+    const q = query(
+      collection(db, "jobs"),
+      where("userId", "==", viewingFriend.id)
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      setFriendJobs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [viewingFriend]);
+
 
   const handleAddFriend = async () => {
     const code = newFriendCode.trim();
@@ -46,6 +67,38 @@ export default function FriendsTab({ userId }: { userId: string }) {
       console.error("Failed to remove friend", err);
     }
   };
+
+if (viewingFriend) {
+    return (
+      <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
+        <div className="max-w-4xl mx-auto flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setViewingFriend(null)} className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">{viewingFriend.displayName}'s Jobs</h2>
+              <p className="text-sm text-muted-foreground">Read-only view</p>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden flex flex-col mt-2">
+            {friendJobs.filter(j => !j.isArchived).length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">No active applications.</div>
+            ) : (
+              friendJobs.filter(j => !j.isArchived).map((job, idx, arr) => (
+                <JobCard
+                  key={job.id}
+                  job={job as any}
+                  isLast={idx === arr.length - 1}
+                  readOnly={true}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
@@ -89,8 +142,16 @@ export default function FriendsTab({ userId }: { userId: string }) {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 bg-secondary text-foreground`}>
                     {friend.displayName ? friend.displayName[0].toUpperCase() : "?"}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{friend.displayName}</p>
+                  <div className="flex-1 min-w-0 flex flex-col items-start">
+                    {friend.isPublic ? (
+                      <button onClick={() => setViewingFriend(friend)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate text-left">
+                        {friend.displayName}
+                      </button>
+                    ) : (
+                      <p className="text-sm font-medium text-foreground truncate flex items-center gap-1.5">
+                        {friend.displayName} <span className="text-[10px] text-muted-foreground font-normal px-1.5 py-0.5 rounded bg-muted">Private</span>
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground" style={{ fontFamily: "'Geist Mono', monospace" }}>
                       {friend.friendCode}
                     </p>

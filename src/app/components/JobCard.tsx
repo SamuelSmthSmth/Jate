@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2,
+  MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2, Archive, RefreshCw, FolderOutput, Share2
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ const statusStyles: Record<Status, string> = {
   Applied:      "bg-white text-amber-600 border border-amber-200 dark:bg-transparent dark:text-amber-400 dark:border-amber-800/50",
   Waiting:      "bg-white text-gray-400 border border-dashed border-gray-300 dark:bg-transparent dark:text-gray-500 dark:border-gray-700",
   Assessment:   "bg-white text-violet-600 border border-violet-200 dark:bg-transparent dark:text-violet-400 dark:border-violet-800/50",
-  Interviewing: "bg-white text-blue-600 border border-blue-200 dark:bg-transparent dark:text-blue-400 dark:border-blue-800/50",
+  Interviewing: "bg-white text-primary border border-primary/20 dark:bg-transparent dark:text-primary dark:border-primary/20",
   Rejected:     "bg-white text-red-500 border border-red-200 dark:bg-transparent dark:text-red-400 dark:border-red-800/50",
   Offer:        "bg-white text-green-600 border border-green-200 dark:bg-transparent dark:text-green-400 dark:border-green-800/50",
 };
@@ -83,6 +84,18 @@ const avatarColors: Record<string, string> = {
   Z: "bg-zinc-100 text-zinc-700",
 };
 
+function getDomain(url?: string) {
+  if (!url) return null;
+  try {
+    let raw = url;
+    if (!raw.startsWith("http")) raw = "https://" + raw;
+    const { hostname } = new URL(raw);
+    return hostname;
+  } catch {
+    return null;
+  }
+}
+
 function getAvatarColor(name: string) {
   return avatarColors[(name?.[0] ?? "A").toUpperCase()] ?? "bg-gray-100 text-gray-600";
 }
@@ -103,16 +116,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function FieldInput({ label, value, onChange, type = "text", placeholder }: {
+function FieldInput({ label, value, onChange, type = "text", placeholder, disabled = false }: {
   label: string; value: string; onChange: (v: string) => void;
-  type?: string; placeholder?: string;
+  type?: string; placeholder?: string; disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[11px] font-medium text-foreground">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+        placeholder={placeholder} disabled={disabled}
+        className="px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
         style={type === "date" ? { fontFamily: "'Geist Mono', monospace" } : undefined} />
     </div>
   );
@@ -125,14 +138,20 @@ export default function JobCard({
   updateJob,
   deleteJob,
   isLast = false,
+  readOnly = false,
 }: {
   job: Job;
-  updateJob: (id: string, data: Record<string, unknown>) => Promise<void>;
-  deleteJob: (id: string) => Promise<void>;
+  updateJob?: (id: string, data: Record<string, unknown>) => Promise<void>;
   isLast?: boolean;
+  readOnly?: boolean;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [edit, setEdit] = useState<EditState | null>(null);
+  const [logoError, setLogoError] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   function handleExpand() {
     if (isExpanded) { setIsExpanded(false); return; }
@@ -153,11 +172,23 @@ export default function JobCard({
   }
 
   function upd(field: Partial<EditState>) {
+    if (readOnly) return;
     setEdit((prev) => prev ? { ...prev, ...field } : prev);
   }
 
   async function handleSave() {
-    if (!edit) return;
+    if (!edit || !updateJob) return;
+
+    if (edit.status === "Offer" && job.status !== "Offer") {
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-hex').trim() || '#3b82f6';
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: [primaryColor, '#10b981', '#f59e0b']
+        });
+    }
+
     await updateJob(job.id, {
       status: edit.status,
       deadline: edit.deadline || null,
@@ -173,17 +204,47 @@ export default function JobCard({
     });
   }
 
-  async function handleDelete() {
-    await deleteJob(job.id);
+  async function handleDeleteConfirm() {
+    if (deleteJob) await deleteJob(job.id);
   }
 
   const displayStatus = (isExpanded && edit ? edit.status : job.status) as Status;
+  const handleSingleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    let txt = `🏢 ${job.company} - ${job.role || job.title || "No Role"}\n📍 ${job.location || "Remote"}`;
+    if (job.deadline || job.deadlines?.signup) {
+      txt += `\n⏳ Due: ${new Date(job.deadline || job.deadlines?.signup || "").toLocaleDateString()}`;
+    }
+    if (job.url || job.postingUrl) {
+      txt += `\n🔗 ${job.url || job.postingUrl}`;
+    }
+    const shareText = `Check out this role:\n\n${txt}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Check out this role', text: shareText });
+      } catch (err) {
+        console.error("Share failed", err);
+      }
+    } else {
+      navigator.clipboard.writeText(shareText);
+      alert("Job copied to clipboard!");
+    }
+  };
+
   const companyStr = job.company || "Unknown";
   const roleStr = job.role || job.title || "No Role";
   const deadlineStr = job.deadline || job.deadlines?.signup;
 
   return (
-    <div className={isLast ? "" : "border-b border-border"}>
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, height: 0 }}
+      transition={{ duration: 0.2 }}
+      className={isLast ? "" : "border-b border-border"}
+    >
       {/* ── Collapsed row ── */}
       <div
         onClick={handleExpand}
@@ -192,8 +253,21 @@ export default function JobCard({
         }`}
       >
         {/* Avatar */}
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 ${getAvatarColor(companyStr)}`}>
-          {companyStr[0].toUpperCase()}
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 overflow-hidden ${getAvatarColor(companyStr)}`}>
+          {(() => {
+            const domain = getDomain(job.url || job.postingUrl || job.portalUrl);
+            if (domain && !logoError) {
+              return (
+                <img 
+                  src={`https://logo.clearbit.com/${domain}`} 
+                  alt={companyStr}
+                  onError={() => setLogoError(true)}
+                  className="w-full h-full object-cover"
+                />
+              );
+            }
+            return companyStr[0].toUpperCase();
+          })()}
         </div>
 
         {/* Content */}
@@ -240,17 +314,22 @@ export default function JobCard({
       </div>
 
       {/* ── Accordion ── */}
-      <div style={{ display: "grid", gridTemplateRows: isExpanded ? "1fr" : "0fr", transition: "grid-template-rows 0.25s ease" }}>
-        <div style={{ overflow: "hidden" }}>
-          {edit && (
+      <AnimatePresence>
+        {isExpanded && edit && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            style={{ overflow: "hidden" }}
+          >
             <div className="px-5 pb-6 pt-4 bg-[#fcfcfc] dark:bg-muted/10 border-t border-border">
               <div className="ml-[56px] flex flex-col gap-6">
 
                 {/* Status */}
                 <div>
                   <SectionLabel>Status</SectionLabel>
-                  <select value={edit.status} onChange={(e) => upd({ status: e.target.value as Status })}
-                    className="w-48 px-3 py-1.5 rounded-md border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+                  <select value={edit.status} onChange={(e) => upd({ status: e.target.value as Status })} disabled={readOnly}
+                    className="w-48 px-3 py-1.5 rounded-md border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
@@ -259,13 +338,13 @@ export default function JobCard({
                 <div>
                   <SectionLabel>Dates</SectionLabel>
                   <div className="grid grid-cols-2 gap-3">
-                    <FieldInput label="Due Date" type="date" value={edit.deadline}
+                    <FieldInput label="Due Date" type="date" value={edit.deadline} disabled={readOnly}
                       onChange={(v) => upd({ deadline: v })} />
-                    <FieldInput label="Applied Date" type="date" value={edit.appliedDate}
+                    <FieldInput label="Applied Date" type="date" value={edit.appliedDate} disabled={readOnly}
                       onChange={(v) => upd({ appliedDate: v })} />
                     {edit.status === "Interviewing" && (
                       <div className="col-span-2">
-                        <FieldInput label="Interview Date (Scheduling)" type="date"
+                        <FieldInput label="Interview Date (Scheduling)" type="date" disabled={readOnly}
                           value={edit.interviewDate} onChange={(v) => upd({ interviewDate: v })} />
                       </div>
                     )}
@@ -276,9 +355,9 @@ export default function JobCard({
                 <div>
                   <SectionLabel>Links</SectionLabel>
                   <div className="flex flex-col gap-3">
-                    <FieldInput label="Posting URL" value={edit.postingUrl}
+                    <FieldInput label="Posting URL" value={edit.postingUrl} disabled={readOnly}
                       onChange={(v) => upd({ postingUrl: v })} placeholder="company.com/jobs/role" />
-                    <FieldInput label="Application Portal URL" value={edit.portalUrl}
+                    <FieldInput label="Application Portal URL" value={edit.portalUrl} disabled={readOnly}
                       onChange={(v) => upd({ portalUrl: v })} placeholder="jobs.lever.co/company/apply" />
                   </div>
                 </div>
@@ -288,12 +367,12 @@ export default function JobCard({
                   <SectionLabel>Compensation</SectionLabel>
                   <div className="flex items-center gap-1 mb-3 p-1 bg-zinc-100 dark:bg-muted rounded-lg w-fit border border-border/50">
                     {(["Paid", "Volunteer"] as SalaryType[]).map((type) => (
-                      <button key={type} onClick={() => upd({ salaryType: type })}
+                      <button key={type} onClick={() => upd({ salaryType: type })} disabled={readOnly}
                         className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
                           edit.salaryType === type
                             ? "bg-white text-foreground shadow-sm dark:bg-card"
                             : "text-muted-foreground hover:text-foreground"
-                        }`}>
+                        } ${readOnly ? "opacity-50 cursor-not-allowed" : ""}`}>
                         {type}
                       </button>
                     ))}
@@ -303,10 +382,10 @@ export default function JobCard({
                       <label className="text-[11px] font-medium text-foreground">Salary Amount</label>
                       <div className="flex items-center">
                         <span className="px-3 py-2 text-sm text-muted-foreground border border-r-0 border-border bg-muted rounded-l-md font-medium">$</span>
-                        <input type="text" value={edit.salary}
+                        <input type="text" value={edit.salary} disabled={readOnly}
                           onChange={(e) => upd({ salary: e.target.value })}
                           placeholder="110000"
-                          className="flex-1 px-3 py-2 border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+                          className="flex-1 px-3 py-2 border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                           style={{ fontFamily: "'Geist Mono', monospace" }} />
                         <span className="px-3 py-2 text-xs text-muted-foreground border border-l-0 border-border bg-muted rounded-r-md whitespace-nowrap">/ year</span>
                       </div>
@@ -317,33 +396,61 @@ export default function JobCard({
                 {/* Notes */}
                 <div>
                   <SectionLabel>Notes</SectionLabel>
-                  <textarea value={edit.notes} onChange={(e) => upd({ notes: e.target.value })}
+                  <textarea value={edit.notes} onChange={(e) => upd({ notes: e.target.value })} disabled={readOnly}
                     placeholder="Add notes about this application..."
                     rows={3}
-                    className="w-full px-3 py-2.5 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed" />
+                    className="w-full px-3 py-2.5 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed disabled:opacity-50" />
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-3 pt-2 mt-2">
-                  <button onClick={handleSave}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-md bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors">
-                    <Save className="w-3.5 h-3.5" />Save Changes
-                  </button>
-                  <button onClick={handleDelete}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-md border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30">
-                    <Trash2 className="w-3.5 h-3.5" />Delete Job
-                  </button>
-                  <button onClick={() => setIsExpanded(false)}
-                    className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-                    <ChevronUp className="w-3.5 h-3.5" />Collapse
-                  </button>
-                </div>
+                {!readOnly && (
+                  <div className="flex flex-col gap-3 pt-2 mt-2">
+                    {showDeleteConfirm ? (
+                      <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-950/20 rounded-md border border-red-100 dark:border-red-900/30">
+                        <span className="text-xs font-medium text-red-600 dark:text-red-400">Are you sure you want to delete this job?</span>
+                        <div className="flex gap-2 ml-auto">
+                          <button onClick={() => setShowDeleteConfirm(false)}
+                            className="px-3 py-1.5 rounded-md bg-white dark:bg-card border border-border text-xs font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all duration-200 ease-in-out">
+                            Cancel
+                          </button>
+                          <button onClick={handleDeleteConfirm}
+                            className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors">
+                            Yes, Delete
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <button onClick={handleSave}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out">
+                          <Save className="w-3.5 h-3.5" />Save Changes
+                        </button>
+                        <button onClick={() => setShowDeleteConfirm(true)}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-md border border-border text-red-600 dark:text-red-400 text-xs font-medium hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95 transition-all duration-200 ease-in-out">
+                          <Trash2 className="w-3.5 h-3.5" />Delete
+                        </button>
+                        <button onClick={() => setIsExpanded(false)}
+                          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all duration-200 ease-in-out">
+                          <ChevronUp className="w-3.5 h-3.5" />Collapse
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {readOnly && (
+                  <div className="flex items-center gap-3 pt-2 mt-2">
+                    <button onClick={() => setIsExpanded(false)}
+                      className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all duration-200 ease-in-out">
+                      <ChevronUp className="w-3.5 h-3.5" />Collapse
+                    </button>
+                  </div>
+                )}
 
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

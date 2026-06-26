@@ -21,15 +21,12 @@ export function useJobs(userId) {
     // Listen to personal jobs where sharedListId is null
     const q = query(
       collection(db, "jobs"), 
-      where("userId", "==", userId),
-      where("sharedListId", "==", null)
+      where("userId", "==", userId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const jobsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const jobsData = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
       setJobs(jobsData);
     });
 
@@ -41,7 +38,6 @@ export function useJobs(userId) {
     await addDoc(collection(db, "jobs"), {
       ...jobPayload,
       userId,
-      sharedListId: null, // Default personal tracking
       createdAt: new Date().toISOString()
     });
   };

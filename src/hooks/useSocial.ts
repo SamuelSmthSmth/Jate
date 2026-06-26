@@ -7,15 +7,9 @@ export type FriendProfile = {
   displayName: string;
   friendCode: string;
   photoURL?: string;
+  isPublic?: boolean;
 };
 
-export type SharedListDoc = {
-  id: string;
-  name: string;
-  members: string[];
-  createdBy: string;
-  createdAt: string;
-};
 
 // 1. useFriends
 export function useFriends(userId: string | null) {
@@ -55,6 +49,7 @@ export function useFriends(userId: string | null) {
             displayName: d.data()?.displayName || "Unknown",
             friendCode: d.data()?.friendCode || "",
             photoURL: d.data()?.photoURL,
+            isPublic: d.data()?.isPublic !== false,
           }));
           
         setFriends(friendsList);
@@ -71,87 +66,7 @@ export function useFriends(userId: string | null) {
   return { friends, loading };
 }
 
-// 2. useSharedLists
-export function useSharedLists(userId: string | null) {
-  const [sharedLists, setSharedLists] = useState<SharedListDoc[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!userId) {
-      setSharedLists([]);
-      setLoading(false);
-      return;
-    }
-
-    const q = query(
-      collection(db, "shared_lists"),
-      where("members", "array-contains", userId)
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const lists = snapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      })) as SharedListDoc[];
-      lists.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      setSharedLists(lists);
-      setLoading(false);
-    });
-
-    return () => unsub();
-  }, [userId]);
-
-  return { sharedLists, loading };
-}
-
-// 3. useSharedJobs
-export function useSharedJobs(sharedListId: string | null) {
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!sharedListId) {
-      setJobs([]);
-      setLoading(false);
-      return;
-    }
-
-    const q = query(
-      collection(db, "jobs"),
-      where("sharedListId", "==", sharedListId)
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const jobList = snapshot.docs.map(d => ({
-        id: d.id,
-        ...d.data()
-      }));
-      setJobs(jobList);
-      setLoading(false);
-    });
-
-    return () => unsub();
-  }, [sharedListId]);
-
-  const addJob = async (jobData: any) => {
-    if (!sharedListId) return;
-    await addDoc(collection(db, "jobs"), {
-      ...jobData,
-      sharedListId,
-      createdAt: new Date().toISOString()
-    });
-  };
-
-  const updateJob = async (jobId: string, updates: any) => {
-    await updateDoc(doc(db, "jobs", jobId), updates);
-  };
-
-  const deleteJob = async (jobId: string) => {
-    await deleteDoc(doc(db, "jobs", jobId));
-  };
-
-  return { jobs, loading, addJob, updateJob, deleteJob };
-}
 
 // 4. addFriendByCode
 export async function addFriendByCode(currentUserId: string, friendCode: string) {
@@ -185,16 +100,3 @@ export async function addFriendByCode(currentUserId: string, friendCode: string)
   };
 }
 
-// 5. createSharedList
-export async function createSharedList(name: string, memberUids: string[], createdByUid: string) {
-  const allMembers = Array.from(new Set([createdByUid, ...memberUids]));
-  
-  const docRef = await addDoc(collection(db, "shared_lists"), {
-    name,
-    members: allMembers,
-    createdBy: createdByUid,
-    createdAt: new Date().toISOString()
-  });
-
-  return docRef.id;
-}

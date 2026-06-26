@@ -1,3 +1,27 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+:root {
+  --accent-hex: #3b82f6; /* Default Blue */
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  display: block;
+}
+
+::view-transition-new(root) {
+  animation: diagonal-wipe 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes diagonal-wipe {
+  0% {
+    clip-path: polygon(100% 0, 100% 0, 100% 0);
+  }
+  100% {
+    clip-path: polygon(100% -200%, 100% 300%, -400% 300%);
+  }
+}
