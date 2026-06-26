@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Briefcase, Users, Settings, Link2, Plus,
   CalendarDays, X, Moon, Sun,
-  ArrowUpDown, UserPlus, UserMinus, Download, LogOut, Pencil, Check,
+  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check,
 } from "lucide-react";
+import Papa from "papaparse";
 import { updateProfile } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
@@ -311,6 +312,7 @@ function LoginScreen({
 export default function App() {
   const { user, loading, loginWithGoogle, logout } = useAuth();
   const { jobs, addJob, updateJob, deleteJob } = useJobs(user?.uid ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [dark, setDark] = useState(false);
   const [activeNav, setActiveNav] = useState<NavItem>("my-jobs");
@@ -358,6 +360,38 @@ export default function App() {
     });
     setForm(EMPTY_FORM);
     setShowAdd(false);
+  }
+
+  async function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        await Promise.all(
+          rows.map(async (row) => {
+            if (!row.Company) return;
+            const statusStr = row.Status || "Applied";
+            const isPaid = row.Paid === "Yes";
+            await addJob({
+              company: row.Company,
+              role: row.Title || "",
+              status: ["Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"].includes(statusStr) ? statusStr as Status : "Applied",
+              deadline: row.Deadline || null,
+              interviewDate: row.Interview || null,
+              postingUrl: row.URL || null,
+              salary: row.Salary || null,
+              salaryType: isPaid ? "Paid" : "Volunteer",
+              notes: row.Notes || null,
+              appliedDate: new Date().toISOString().slice(0, 10),
+            });
+          })
+        );
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+    });
   }
 
   async function seedDemoData() {
@@ -686,6 +720,12 @@ export default function App() {
                   style={{ fontFamily: "'Geist Mono', monospace" }}>
                   <Download className="w-3 h-3" />Export CSV
                 </button>
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  style={{ fontFamily: "'Geist Mono', monospace" }}>
+                  <Upload className="w-3 h-3" />Import CSV
+                </button>
+                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleImportCSV} className="hidden" />
               </div>
             </div>
 
