@@ -381,10 +381,10 @@ export default function JobCard({
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[11px] font-medium text-foreground">Salary Amount</label>
                       <div className="flex items-center">
-                        <span className="px-3 py-2 text-sm text-muted-foreground border border-r-0 border-border bg-muted rounded-l-md font-medium">$</span>
+                        <span className="px-3 py-2 text-sm text-muted-foreground border border-r-0 border-border bg-muted rounded-l-md font-medium">£</span>
                         <input type="text" value={edit.salary} disabled={readOnly}
                           onChange={(e) => upd({ salary: e.target.value })}
-                          placeholder="110000"
+                          placeholder="0"
                           className="flex-1 px-3 py-2 border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                           style={{ fontFamily: "'Geist Mono', monospace" }} />
                         <span className="px-3 py-2 text-xs text-muted-foreground border border-l-0 border-border bg-muted rounded-r-md whitespace-nowrap">/ year</span>
