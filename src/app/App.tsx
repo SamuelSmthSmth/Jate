@@ -147,6 +147,19 @@ function LoadingScreen() {
     if (style === 'grid') return "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px]";
     if (style === 'diagonal') return "bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)] dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]";
     if (style === 'plus') return "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]";
+    if (style === 'mesh') return "bg-[radial-gradient(ellipse_at_center,transparent_0%,#80808011_100%)] bg-[size:10px_10px]";
+    if (style === 'waves') return "bg-[repeating-radial-gradient(circle_at_0_0,transparent_0,#80808011_10px,transparent_20px)]";
+    if (style === 'zigzag') return "bg-[linear-gradient(135deg,#80808011_25%,transparent_25%),linear-gradient(225deg,#80808011_25%,transparent_25%),linear-gradient(45deg,#80808011_25%,transparent_25%),linear-gradient(315deg,#80808011_25%,transparent_25%)] bg-[size:20px_20px] bg-[position:10px_0,10px_0,0_0,0_0]";
+    
+    if (style === 'boxes') return "bg-[linear-gradient(#80808011_1px,transparent_1px),linear-gradient(90deg,#80808011_1px,transparent_1px)] bg-[size:30px_30px]";
+    if (style === 'weave') return "bg-[linear-gradient(45deg,#80808011_25%,transparent_25%),linear-gradient(-45deg,#80808011_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#80808011_75%),linear-gradient(-45deg,transparent_75%,#80808011_75%)] bg-[size:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px]";
+    if (style === 'lines') return "bg-[repeating-linear-gradient(0deg,transparent,transparent_9px,#80808011_10px)]";
+    if (style === 'paper') return "bg-[linear-gradient(transparent_95%,#80808011_100%)] bg-[size:100%_2rem]";
+    if (style === 'blueprint') return "bg-[#0f172a] bg-[linear-gradient(#1e293b_1px,transparent_1px),linear-gradient(90deg,#1e293b_1px,transparent_1px)] bg-[size:20px_20px]";
+    if (style === 'isometric') return "bg-[linear-gradient(30deg,#80808011_1px,transparent_1px),linear-gradient(150deg,#80808011_1px,transparent_1px)] bg-[size:20px_34.64px]";
+    if (style === 'glow') return "bg-[radial-gradient(circle_at_50%_0%,rgba(120,119,198,0.15),transparent_50%),radial-gradient(circle_at_50%_100%,rgba(120,119,198,0.15),transparent_50%)]";
+    if (style === 'aurora') return "bg-[radial-gradient(circle_at_0%_0%,rgba(120,119,198,0.15),transparent_50%),radial-gradient(circle_at_100%_100%,rgba(255,100,200,0.15),transparent_50%),radial-gradient(circle_at_100%_0%,rgba(100,255,200,0.15),transparent_50%)]";
+    
     return "";
   };
 
@@ -234,6 +247,19 @@ function LoginScreen({
     if (style === 'grid') return "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px]";
     if (style === 'diagonal') return "bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)] dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]";
     if (style === 'plus') return "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]";
+    if (style === 'mesh') return "bg-[radial-gradient(ellipse_at_center,transparent_0%,#80808011_100%)] bg-[size:10px_10px]";
+    if (style === 'waves') return "bg-[repeating-radial-gradient(circle_at_0_0,transparent_0,#80808011_10px,transparent_20px)]";
+    if (style === 'zigzag') return "bg-[linear-gradient(135deg,#80808011_25%,transparent_25%),linear-gradient(225deg,#80808011_25%,transparent_25%),linear-gradient(45deg,#80808011_25%,transparent_25%),linear-gradient(315deg,#80808011_25%,transparent_25%)] bg-[size:20px_20px] bg-[position:10px_0,10px_0,0_0,0_0]";
+    
+    if (style === 'boxes') return "bg-[linear-gradient(#80808011_1px,transparent_1px),linear-gradient(90deg,#80808011_1px,transparent_1px)] bg-[size:30px_30px]";
+    if (style === 'weave') return "bg-[linear-gradient(45deg,#80808011_25%,transparent_25%),linear-gradient(-45deg,#80808011_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#80808011_75%),linear-gradient(-45deg,transparent_75%,#80808011_75%)] bg-[size:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px]";
+    if (style === 'lines') return "bg-[repeating-linear-gradient(0deg,transparent,transparent_9px,#80808011_10px)]";
+    if (style === 'paper') return "bg-[linear-gradient(transparent_95%,#80808011_100%)] bg-[size:100%_2rem]";
+    if (style === 'blueprint') return "bg-[#0f172a] bg-[linear-gradient(#1e293b_1px,transparent_1px),linear-gradient(90deg,#1e293b_1px,transparent_1px)] bg-[size:20px_20px]";
+    if (style === 'isometric') return "bg-[linear-gradient(30deg,#80808011_1px,transparent_1px),linear-gradient(150deg,#80808011_1px,transparent_1px)] bg-[size:20px_34.64px]";
+    if (style === 'glow') return "bg-[radial-gradient(circle_at_50%_0%,rgba(120,119,198,0.15),transparent_50%),radial-gradient(circle_at_50%_100%,rgba(120,119,198,0.15),transparent_50%)]";
+    if (style === 'aurora') return "bg-[radial-gradient(circle_at_0%_0%,rgba(120,119,198,0.15),transparent_50%),radial-gradient(circle_at_100%_100%,rgba(255,100,200,0.15),transparent_50%),radial-gradient(circle_at_100%_0%,rgba(100,255,200,0.15),transparent_50%)]";
+    
     return "";
   };
 
@@ -356,6 +382,13 @@ export default function App() {
   }, [isStealthMode]);
 
   const [viewType, setViewType] = useState<"list" | "grid">("list");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const effectiveViewType = isMobile ? 'grid' : viewType;
   const [copiedIcal, setCopiedIcal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
@@ -570,17 +603,42 @@ export default function App() {
     if (style === 'grid') return "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px]";
     if (style === 'diagonal') return "bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)] dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]";
     if (style === 'plus') return "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]";
+    if (style === 'mesh') return "bg-[radial-gradient(ellipse_at_center,transparent_0%,#80808011_100%)] bg-[size:10px_10px]";
+    if (style === 'waves') return "bg-[repeating-radial-gradient(circle_at_0_0,transparent_0,#80808011_10px,transparent_20px)]";
+    if (style === 'zigzag') return "bg-[linear-gradient(135deg,#80808011_25%,transparent_25%),linear-gradient(225deg,#80808011_25%,transparent_25%),linear-gradient(45deg,#80808011_25%,transparent_25%),linear-gradient(315deg,#80808011_25%,transparent_25%)] bg-[size:20px_20px] bg-[position:10px_0,10px_0,0_0,0_0]";
+    
+    if (style === 'boxes') return "bg-[linear-gradient(#80808011_1px,transparent_1px),linear-gradient(90deg,#80808011_1px,transparent_1px)] bg-[size:30px_30px]";
+    if (style === 'weave') return "bg-[linear-gradient(45deg,#80808011_25%,transparent_25%),linear-gradient(-45deg,#80808011_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#80808011_75%),linear-gradient(-45deg,transparent_75%,#80808011_75%)] bg-[size:20px_20px] bg-[position:0_0,0_10px,10px_-10px,-10px_0px]";
+    if (style === 'lines') return "bg-[repeating-linear-gradient(0deg,transparent,transparent_9px,#80808011_10px)]";
+    if (style === 'paper') return "bg-[linear-gradient(transparent_95%,#80808011_100%)] bg-[size:100%_2rem]";
+    if (style === 'blueprint') return "bg-[#0f172a] bg-[linear-gradient(#1e293b_1px,transparent_1px),linear-gradient(90deg,#1e293b_1px,transparent_1px)] bg-[size:20px_20px]";
+    if (style === 'isometric') return "bg-[linear-gradient(30deg,#80808011_1px,transparent_1px),linear-gradient(150deg,#80808011_1px,transparent_1px)] bg-[size:20px_34.64px]";
+    if (style === 'glow') return "bg-[radial-gradient(circle_at_50%_0%,rgba(120,119,198,0.15),transparent_50%),radial-gradient(circle_at_50%_100%,rgba(120,119,198,0.15),transparent_50%)]";
+    if (style === 'aurora') return "bg-[radial-gradient(circle_at_0%_0%,rgba(120,119,198,0.15),transparent_50%),radial-gradient(circle_at_100%_100%,rgba(255,100,200,0.15),transparent_50%),radial-gradient(circle_at_100%_0%,rgba(100,255,200,0.15),transparent_50%)]";
+    
     return "";
   };
 
   return (
-    <div className={`size-full flex overflow-hidden bg-background text-foreground ${dark ? "dark" : ""} font-${fontFamily} ${getBgClass(backgroundStyle)}`}>
-      {backgroundStyle === 'animated' && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[100px]" />
-          <div className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
-        </div>
-      )}
+    <div className={`relative size-full flex overflow-hidden bg-background text-foreground ${dark ? "dark" : ""} font-${fontFamily}`}>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={backgroundStyle}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className={`absolute inset-0 z-0 pointer-events-none ${getBgClass(backgroundStyle)}`}
+        >
+          {backgroundStyle === 'animated' && (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[100px]" />
+              <div className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+      <div className="relative z-10 flex size-full">
 
       {/* ── Sidebar ── */}
       <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-secondary border-r border-border h-full">
@@ -800,7 +858,7 @@ export default function App() {
             )}
 
         {activeNav === "my-jobs" && (
-              <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border shrink-0">
+              <div className="hidden md:flex items-center bg-muted/50 rounded-lg p-0.5 border border-border shrink-0">
                 <button onClick={() => setViewType('list')} className={`p-1.5 rounded-md transition-colors ${viewType === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                   <List className="w-4 h-4" />
                 </button>
@@ -908,7 +966,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
                     transition={{ duration: 0.08 }}
-                    className={viewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}
+                    className={effectiveViewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}
                   >
                     <AnimatePresence mode="popLayout">
                     {filtered.map((job, idx) => (
@@ -917,8 +975,8 @@ export default function App() {
                         job={job}
                         updateJob={updateJob}
                         deleteJob={deleteJob}
-                        isLast={viewType === 'grid' ? true : (idx === filtered.length - 1)}
-                        isGridView={viewType === 'grid'}
+                        isLast={effectiveViewType === 'grid' ? true : (idx === filtered.length - 1)}
+                        isGridView={effectiveViewType === 'grid'}
                       isStealthMode={isStealthMode}
                       />
                     ))}
@@ -1127,40 +1185,51 @@ export default function App() {
                       <option value="outfit">Sans Serif (Outfit)</option>
                       <option value="roboto">Sans Serif (Roboto)</option>
                       <option value="playfair">Serif (Playfair Display)</option>
-                    </select>
-                  </div>
-                  {/* Density */}
-                  <div className="flex items-center justify-between px-5 py-4 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Card Density</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">Adjust spacing and padding</p>
-                    </div>
-                    <select
-                      value={density}
-                      onChange={(e) => setDensity(e.target.value as any)}
-                      className="px-3 py-1.5 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none"
-                    >
-                      <option value="comfortable">Comfortable</option>
-                      <option value="compact">Compact</option>
+                      <option value="comic">Comic Neue</option>
+                      <option value="bricolage">Bricolage Grotesque</option>
+                      <option value="cinzel">Cinzel</option>
+                      <option value="lobster">Lobster</option>
                     </select>
                   </div>
                   {/* Background Style */}
-                  <div className="flex items-center justify-between px-5 py-4 gap-4">
+                  <div className="flex flex-col gap-4 px-5 py-4">
                     <div>
                       <h3 className="text-sm font-medium text-foreground">Background Style</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">Customize the app background</p>
                     </div>
-                    <select
-                      value={backgroundStyle}
-                      onChange={(e) => setBackgroundStyle(e.target.value as any)}
-                      className="px-3 py-1.5 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none"
-                    >
-                      <option value="solid">Solid Color</option>
-                      <option value="grid">Dotted Grid</option>
-                      <option value="animated">Static Orbs</option>
-                      <option value="diagonal">Diagonal Stripes</option>
-                      <option value="plus">Plus Grid</option>
-                    </select>
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 mt-1">
+                      {[
+                        { id: 'solid', title: 'Solid Color' },
+                        { id: 'grid', title: 'Dotted Grid' },
+                        { id: 'animated', title: 'Static Orbs' },
+                        { id: 'diagonal', title: 'Diagonal Stripes' },
+                        { id: 'plus', title: 'Plus Grid' },
+                        { id: 'mesh', title: 'Mesh Pattern' },
+                        { id: 'waves', title: 'Waves Pattern' },
+                        { id: 'zigzag', title: 'Zigzag Pattern' },
+                        { id: 'boxes', title: 'Boxes' },
+                        { id: 'weave', title: 'Woven Pattern' },
+                        { id: 'lines', title: 'Horizontal Lines' },
+                        { id: 'paper', title: 'Lined Paper' },
+                        { id: 'blueprint', title: 'Blueprint' },
+                        { id: 'isometric', title: 'Isometric Grid' },
+                        { id: 'glow', title: 'Neon Glow' },
+                        { id: 'aurora', title: 'Aurora' },
+                      ].map(bg => (
+                        <button
+                          key={bg.id}
+                          title={bg.title}
+                          onClick={() => setBackgroundStyle(bg.id as any)}
+                          className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${
+                            backgroundStyle === bg.id 
+                              ? 'border-primary ring-2 ring-primary/20 shadow-md' 
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className={`absolute inset-0 bg-background ${getBgClass(bg.id)}`}></div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   {/* Custom Status Colors */}
                   <div className="flex flex-col gap-4 px-5 py-4">
@@ -1259,6 +1328,7 @@ export default function App() {
           );
         })}
       </div>
+    </div>
     </div>
   );
 }

@@ -2,9 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { DEFAULT_STATUS_COLORS } from "../lib/constants";
 import { Status } from "../app/types";
 
-export type FontFamily = "sans" | "mono" | "serif" | "outfit" | "roboto" | "playfair";
+export type FontFamily = "sans" | "mono" | "serif" | "outfit" | "roboto" | "playfair" | "comic" | "bricolage" | "cinzel" | "lobster";
 export type Density = "comfortable" | "compact";
-export type BackgroundStyle = "solid" | "grid" | "animated" | "diagonal" | "plus";
+export type BackgroundStyle = "solid" | "grid" | "animated" | "diagonal" | "plus" | "mesh" | "waves" | "zigzag" | "boxes" | "weave" | "lines" | "paper" | "blueprint" | "isometric" | "glow" | "aurora";
 
 interface ThemeSettingsState {
   fontFamily: FontFamily;
