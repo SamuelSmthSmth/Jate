@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List,
+  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List, LayoutDashboard, Lock,
   CalendarDays, X, Moon, Sun,
   ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, Copy, FileText, Share2,
 } from "lucide-react";
@@ -45,6 +45,8 @@ type Job = {
   isPaid?: boolean;
   deadlines?: { signup?: string; interview?: string };
   url?: string;
+  interviewQuestions?: string[];
+  lessonsLearned?: string;
 };
 
 type Friend = {
@@ -345,7 +347,14 @@ export default function App() {
 
   const [dark, setDark] = useState(false);
   const { fontFamily, density, backgroundStyle, statusColors, setFontFamily, setDensity, setBackgroundStyle, setStatusColor } = useThemeSettings();
+
   const [activeNav, setActiveNav] = useState<NavItem>("my-jobs");
+  const [isStealthMode, setIsStealthMode] = useState(() => localStorage.getItem("stealthMode") === "true");
+
+  useEffect(() => {
+    localStorage.setItem("stealthMode", String(isStealthMode));
+  }, [isStealthMode]);
+
   const [viewType, setViewType] = useState<"list" | "grid">("list");
   const [copiedIcal, setCopiedIcal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -626,6 +635,9 @@ export default function App() {
               </div>
             </div>
           )}
+        
+
+
         </nav>
 
         {/* User profile + quick-join */}
@@ -687,19 +699,22 @@ export default function App() {
             <h1 className="text-lg font-semibold tracking-tight text-foreground">
               {PAGE_TITLES[activeNav]}
             </h1>
-            {activeNav === "my-jobs" && (
+
+        {activeNav === "my-jobs" && (
               <p className="text-sm text-muted-foreground mt-0.5">
                 {typedJobs.length} application{typedJobs.length !== 1 ? "s" : ""} tracked
               </p>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {activeNav === "my-jobs" && (
+
+        {activeNav === "my-jobs" && (
               <button onClick={() => { setSelectMode(!selectMode); setSelectedJobs(new Set()); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-opacity border ${selectMode ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent text-foreground border-border hover:bg-muted'}`}>
                 {selectMode ? 'Cancel' : 'Select'}
               </button>
             )}
-            {activeNav === "my-jobs" && (
+
+        {activeNav === "my-jobs" && (
               <Dialog.Root open={showAdd} onOpenChange={setShowAdd}>
                 <Dialog.Trigger asChild>
                   <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
@@ -783,7 +798,8 @@ export default function App() {
                 </Dialog.Portal>
               </Dialog.Root>
             )}
-            {activeNav === "my-jobs" && (
+
+        {activeNav === "my-jobs" && (
               <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border shrink-0">
                 <button onClick={() => setViewType('list')} className={`p-1.5 rounded-md transition-colors ${viewType === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                   <List className="w-4 h-4" />
@@ -811,6 +827,7 @@ export default function App() {
 
         {/* ══════════════ MY JOBS ══════════════ */}
         <AnimatePresence mode="wait">
+
         {activeNav === "my-jobs" && (
           <motion.div
             key="my-jobs"
@@ -902,6 +919,7 @@ export default function App() {
                         deleteJob={deleteJob}
                         isLast={viewType === 'grid' ? true : (idx === filtered.length - 1)}
                         isGridView={viewType === 'grid'}
+                      isStealthMode={isStealthMode}
                       />
                     ))}
                     </AnimatePresence>
@@ -994,83 +1012,35 @@ export default function App() {
                 </p>
               </div>
 
-              {/* Privacy Section */}
+                            {/* Privacy Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-4 text-foreground">Privacy</h2>
-                <div className="bg-card rounded-lg border border-border p-5 flex items-center justify-between shadow-sm">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground">Public Profile</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Allow friends to view my personal job board.</p>
+                <div className="bg-card rounded-lg border border-border flex flex-col shadow-sm divide-y divide-border">
+                  <div className="p-5 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Public Profile</h3>
+                      <p className="text-xs text-muted-foreground mt-1">Allow friends to view my personal job board.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={user?.isPublic !== false} onChange={(e) => updatePrivacy(user.uid, e.target.checked)} />
+                      <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                    </label>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={user?.isPublic !== false} onChange={(e) => updatePrivacy(user.uid, e.target.checked)} />
-                    <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                  </label>
+                  <div className="p-5 flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-foreground" />
+                        <h3 className="text-sm font-medium text-foreground">Stealth Mode</h3>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Blur sensitive details (Salary, Location, Notes, Links) until hovered.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={isStealthMode} onChange={(e) => setIsStealthMode(e.target.checked)} />
+                      <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                    </label>
+                  </div>
                 </div>
               </div>
-
-              {/* Appearance Section */}
-              <div>
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Appearance</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
-                  {/* Dark Mode */}
-                  <div className="flex items-center justify-between px-5 py-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Dark Mode</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">Toggle OLED dark mode</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const toggle = () => {
-                          const isDark = document.documentElement.classList.toggle('dark');
-                          localStorage.setItem('theme', isDark ? 'dark' : 'light');
-                          setDark(isDark);
-                        };
-                        if (!document.startViewTransition) toggle();
-                        else document.startViewTransition(() => toggle());
-                      }}
-                      className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out flex items-center gap-2"
-                    >
-                      <Moon className="w-4 h-4 hidden dark:block" />
-                      <Sun className="w-4 h-4 block dark:hidden" />
-                      Toggle Theme
-                    </button>
-                  </div>
-                  {/* Accent Color */}
-                  <div className="flex flex-col gap-4 px-5 py-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Accent Color</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">Customize your app's primary color</p>
-                    </div>
-                    <div className="flex flex-col gap-3">
-                      {[
-                        { label: "Generic", colors: ["#3b82f6", "#a855f7", "#ef4444", "#22c55e", "#f59e0b"] },
-                        { label: "Pastel", colors: ["#fbcfe8", "#a7f3d0", "#ddd6fe", "#fcd34d", "#bbf7d0"] },
-                        { label: "Muted", colors: ["#64748b", "#78716c", "#71717a", "#737373", "#57534e"] }
-                      ].map(group => (
-                        <div key={group.label} className="flex items-center gap-3">
-                          <span className="text-xs font-medium text-muted-foreground w-14">{group.label}</span>
-                          <div className="flex gap-2">
-                            {group.colors.map(color => (
-                              <button
-                                key={color}
-                                onClick={() => {
-                                  document.documentElement.style.setProperty('--accent-hex', color);
-                                  localStorage.setItem('accentColor', color);
-                                  // trigger re-render hack by updating an unused state or similar if needed, 
-                                  // but setting the property works natively for css. We could just rely on that.
-                                }}
-                                className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 active:scale-95 transition-transform"
-                                style={{ backgroundColor: color }}
-                                title={color}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
               </div>
 
 
@@ -1192,7 +1162,6 @@ export default function App() {
                 </button>
               </div>
 
-            </div>
           </motion.div>
         )}
         </AnimatePresence>

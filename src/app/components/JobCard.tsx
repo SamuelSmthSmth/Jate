@@ -2,6 +2,7 @@ import { useState, forwardRef, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useThemeSettings } from "../../hooks/useThemeSettings";
+import { ShareCardTemplate } from "./ShareCardTemplate";
 import { toPng } from 'html-to-image';
 
 import {
@@ -88,7 +89,7 @@ const avatarColors: Record<string, string> = {
   Z: "bg-zinc-100 text-zinc-700",
 };
 
-function getDomain(url?: string) {
+export function getDomain(url?: string) {
   if (!url) return null;
   try {
     let raw = url;
@@ -100,7 +101,7 @@ function getDomain(url?: string) {
   }
 }
 
-function getAvatarColor(name: string) {
+export function getAvatarColor(name: string) {
   return avatarColors[(name?.[0] ?? "A").toUpperCase()] ?? "bg-gray-100 text-gray-600";
 }
 
@@ -120,16 +121,17 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function FieldInput({ label, value, onChange, type = "text", placeholder, disabled = false }: {
+function FieldInput({ label, value, onChange, type = "text", placeholder, disabled = false, blur = false }: {
   label: string; value: string; onChange: (v: string) => void;
-  type?: string; placeholder?: string; disabled?: boolean;
+  type?: string; placeholder?: string; disabled?: boolean; blur?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[11px] font-medium text-foreground">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
-        className="px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+        className={`px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 ${blur ? "reveal-on-interaction" : ""} ${blur ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`}
+        tabIndex={0}
         style={type === "date" ? { fontFamily: "'Geist Mono', monospace" } : undefined} />
     </div>
   );
@@ -158,6 +160,7 @@ const JobCard = forwardRef<HTMLDivElement, {
   isSelected?: boolean;
   onToggleSelect?: () => void;
   isGridView?: boolean;
+  isStealthMode?: boolean;
 }>(({
   job,
   updateJob,
@@ -165,9 +168,11 @@ const JobCard = forwardRef<HTMLDivElement, {
   isLast = false,
   readOnly = false,
   isGridView = false,
+  isStealthMode = false,
 }, ref) => {
   const { density, statusColors } = useThemeSettings();
   const cardRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [logoError, setLogoError] = useState(false);
@@ -260,9 +265,9 @@ const JobCard = forwardRef<HTMLDivElement, {
 
   const handleShareImage = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!cardRef.current) return;
+    if (!shareCardRef.current) return;
     try {
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true, backgroundColor: '#111' });
+      const dataUrl = await toPng(shareCardRef.current, { cacheBust: true, backgroundColor: '#09090b', width: 600, height: 600 });
       
       // Try to write to clipboard as an image
       try {
@@ -317,6 +322,18 @@ const JobCard = forwardRef<HTMLDivElement, {
       transition={{ duration: 0.2 }}
       className={isGridView ? "flex flex-col" : (isLast ? "" : "border-b border-border")}
     >
+      {/* Hidden Share Card for Image Generation */}
+      <div className="fixed top-[-9999px] left-[-9999px] pointer-events-none opacity-0" style={{ zIndex: -1 }}>
+        <ShareCardTemplate 
+           ref={shareCardRef}
+           job={job}
+           statusColors={statusColors}
+           getAvatarColor={getAvatarColor}
+           getDomain={getDomain}
+           logoError={logoError}
+           setLogoError={setLogoError}
+        />
+      </div>
       {/* ── Collapsed row / Grid Tile ── */}
       {isGridView ? (
         <div
@@ -346,7 +363,7 @@ const JobCard = forwardRef<HTMLDivElement, {
               })()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-foreground truncate">{companyStr}</p>
+              <p className={`text-[15px] font-semibold text-foreground truncate reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`} tabIndex={0}>{companyStr}</p>
               <p className="text-[13px] text-muted-foreground truncate mt-0.5">{roleStr}</p>
             </div>
           </div>
@@ -423,7 +440,7 @@ const JobCard = forwardRef<HTMLDivElement, {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-semibold text-foreground truncate">{companyStr}</p>
+          <p className={`text-[15px] font-semibold text-foreground truncate reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`} tabIndex={0}>{companyStr}</p>
           <p className="text-[13px] text-muted-foreground truncate mt-0.5">{roleStr}</p>
 
           <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 mt-2.5">
@@ -480,7 +497,7 @@ const JobCard = forwardRef<HTMLDivElement, {
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <div className={`${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b -mt-1 bg-[#fcfcfc] dark:bg-accent/10" : "bg-[#fcfcfc] dark:bg-muted/10"} border-t border-border`}>
+            <div tabIndex={0} className={`group/accordion focus:outline-none ${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b -mt-1 bg-[#fcfcfc] dark:bg-accent/10" : "bg-[#fcfcfc] dark:bg-muted/10"} border-t border-border`}>
               <div className={`${isGridView ? "" : (density === "compact" ? "ml-[44px]" : "ml-[56px]")} gap-4 flex flex-col`}>
 
                 {/* Status */}
@@ -514,9 +531,9 @@ const JobCard = forwardRef<HTMLDivElement, {
                   <SectionLabel>Links</SectionLabel>
                   <div className="flex flex-col gap-3">
                     <FieldInput label="Posting URL" value={edit.postingUrl} disabled={readOnly}
-                      onChange={(v) => upd({ postingUrl: v })} placeholder="company.com/jobs/role" />
+                      onChange={(v) => upd({ postingUrl: v })} placeholder="company.com/jobs/role" blur={isStealthMode} />
                     <FieldInput label="Application Portal URL" value={edit.portalUrl} disabled={readOnly}
-                      onChange={(v) => upd({ portalUrl: v })} placeholder="jobs.lever.co/company/apply" />
+                      onChange={(v) => upd({ portalUrl: v })} placeholder="jobs.lever.co/company/apply" blur={isStealthMode} />
                   </div>
                 </div>
 
@@ -543,7 +560,8 @@ const JobCard = forwardRef<HTMLDivElement, {
                         <input type="text" value={edit.salary} disabled={readOnly}
                           onChange={(e) => upd({ salary: e.target.value })}
                           placeholder="0"
-                          className="flex-1 px-3 py-2 border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                          className={`flex-1 px-3 py-2 border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`}
+                          tabIndex={0}
                           style={{ fontFamily: "'Geist Mono', monospace" }} />
                         <span className="px-3 py-2 text-xs text-muted-foreground border border-l-0 border-border bg-muted rounded-r-md whitespace-nowrap">/ year</span>
                       </div>
@@ -557,7 +575,8 @@ const JobCard = forwardRef<HTMLDivElement, {
                   <textarea value={edit.notes} onChange={(e) => upd({ notes: e.target.value })} disabled={readOnly}
                     placeholder="Add notes about this application..."
                     rows={3}
-                    className="w-full px-3 py-2.5 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed disabled:opacity-50" />
+                    tabIndex={0}
+                    className={`w-full px-3 py-2.5 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none leading-relaxed disabled:opacity-50 reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`} />
                 </div>
 
                 {/* Actions */}

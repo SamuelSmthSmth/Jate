@@ -34,3 +34,19 @@
 .dark .rbc-today {
   background-color: var(--card);
 }
+
+@layer utilities {
+  .reveal-on-interaction {
+    transition: filter 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  }
+  /* Desktop: Reveal when parent card is hovered */
+  .group:hover .reveal-on-interaction {
+    filter: blur(0px) !important;
+  }
+  /* Mobile/Tap: Reveal when target element is clicked/focused */
+  .reveal-on-interaction:focus,
+  .reveal-on-interaction:active {
+    filter: blur(0px) !important;
+    outline: none;
+  }
+}
