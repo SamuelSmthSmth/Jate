@@ -1,9 +1,11 @@
-import { useState, forwardRef } from "react";
+import { useState, forwardRef, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useThemeSettings } from "../../hooks/useThemeSettings";
+import { toPng } from 'html-to-image';
 
 import {
-  MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2, Archive, RefreshCw, FolderOutput, Share2
+  MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2, Archive, RefreshCw, FolderOutput, Share2, Copy, Image as ImageIcon
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -155,14 +157,17 @@ const JobCard = forwardRef<HTMLDivElement, {
   selectMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  isGridView?: boolean;
 }>(({
   job,
   updateJob,
   deleteJob,
   isLast = false,
   readOnly = false,
+  isGridView = false,
 }, ref) => {
   const { density, statusColors } = useThemeSettings();
+  const cardRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [logoError, setLogoError] = useState(false);
@@ -247,6 +252,57 @@ const JobCard = forwardRef<HTMLDivElement, {
     }
   };
 
+  const handleShareText = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const text = `Job: ${companyStr} - ${roleStr}\nStatus: ${displayStatus}\nDue: ${fmt(deadlineStr) || "N/A"}\nLocation: ${job.location || "N/A"}\nURL: ${job.postingUrl || job.url || "N/A"}`;
+    navigator.clipboard.writeText(text);
+  };
+
+  const handleShareImage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!cardRef.current) return;
+    try {
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, backgroundColor: '#111' });
+      
+      // Try to write to clipboard as an image
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+      } catch (err) {
+        // Fallback to download
+        const link = document.createElement('a');
+        link.download = `job-card-${companyStr.replace(/\s+/g, '-').toLowerCase()}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
+    } catch (err) {
+      console.error('Failed to generate image', err);
+    }
+  };
+
+  const ShareMenu = (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button onClick={(e) => e.stopPropagation()} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 active:scale-95 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 border border-transparent hover:border-border">
+          <Share2 className="w-3.5 h-3.5" />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" className="z-50 min-w-[140px] bg-popover rounded-md border border-border shadow-md p-1 animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2">
+          <DropdownMenu.Item onClick={handleShareText} className="flex items-center gap-2 px-2 py-1.5 text-xs text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none">
+            <Copy className="w-3.5 h-3.5 text-muted-foreground" />Copy Text
+          </DropdownMenu.Item>
+          <DropdownMenu.Item onClick={handleShareImage} className="flex items-center gap-2 px-2 py-1.5 text-xs text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none">
+            <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />Share Image
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+
   const companyStr = job.company || "Unknown";
   const roleStr = job.role || job.title || "No Role";
   const deadlineStr = job.deadline || job.deadlines?.signup;
@@ -259,15 +315,94 @@ const JobCard = forwardRef<HTMLDivElement, {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, height: 0 }}
       transition={{ duration: 0.2 }}
-      className={isLast ? "" : "border-b border-border"}
+      className={isGridView ? "h-full" : (isLast ? "" : "border-b border-border")}
     >
-      {/* ── Collapsed row ── */}
-      <div
-        onClick={handleExpand}
-        className={`group flex items-start transition-colors cursor-pointer ${density === 'compact' ? 'gap-3 px-3 py-2' : 'gap-4 px-5 py-4'} ${
-          isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10" : "bg-card hover:bg-secondary/40"
-        }`}
-      >
+      {/* ── Collapsed row / Grid Tile ── */}
+      {isGridView ? (
+        <div
+          onClick={handleExpand}
+          ref={cardRef}
+          className={`flex flex-col h-full transition-colors cursor-pointer rounded-xl border border-border p-5 relative group ${
+            isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10" : "bg-card hover:bg-secondary/40"
+          }`}
+        >
+          {/* Top: Avatar and Titles */}
+          <div className="absolute top-3 right-3">{ShareMenu}</div>
+          <div className="flex items-start gap-3 mb-4 pr-6">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 overflow-hidden ${getAvatarColor(companyStr)}`}>
+              {(() => {
+                const domain = getDomain(job.url || job.postingUrl || job.portalUrl);
+                if (domain && !logoError) {
+                  return (
+                    <img 
+                      src={`https://logo.clearbit.com/${domain}`} 
+                      alt={companyStr}
+                      onError={() => setLogoError(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  );
+                }
+                return companyStr[0].toUpperCase();
+              })()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold text-foreground truncate">{companyStr}</p>
+              <p className="text-[13px] text-muted-foreground truncate mt-0.5">{roleStr}</p>
+            </div>
+          </div>
+
+          {/* Middle: Dates and Location */}
+          <div className="flex flex-col gap-2 flex-1 mb-5">
+            {job.location && (
+              <span className="flex items-center gap-2 text-[11px] text-muted-foreground"
+                style={{ fontFamily: "'Geist Mono', monospace" }}>
+                <MapPin className="w-3.5 h-3.5 text-muted-foreground/70" />{job.location}
+              </span>
+            )}
+            {deadlineStr && (
+              <span className="flex items-center gap-2 text-[11px] text-muted-foreground"
+                style={{ fontFamily: "'Geist Mono', monospace" }}>
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground/70" />Due {fmt(deadlineStr)}
+              </span>
+            )}
+            {job.appliedDate && (
+              <span className="flex items-center gap-2 text-[11px] text-muted-foreground"
+                style={{ fontFamily: "'Geist Mono', monospace" }}>
+                <Clock className="w-3.5 h-3.5 text-muted-foreground/70" />Applied {fmt(job.appliedDate)}
+              </span>
+            )}
+          </div>
+
+          {/* Bottom Right: Status Badge */}
+          <div className="flex items-center justify-between mt-auto">
+            {ShareMenu}
+            <div className="text-muted-foreground/50 w-4 h-4 flex items-center justify-center group-hover:opacity-100 opacity-50">
+              {isExpanded
+                ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                : <ChevronDown className="w-4 h-4 opacity-0 transition-opacity" />}
+            </div>
+            <span
+              className={`text-[11px] px-2.5 py-1 rounded-md font-medium border`}
+              style={{ 
+                fontFamily: "'Geist Mono', monospace", 
+                backgroundColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.15)`,
+                color: `rgb(${hexToRgb(statusColors[displayStatus])})`,
+                borderColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.3)`
+              }}
+            >
+              {displayStatus}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={handleExpand}
+          ref={cardRef}
+          className={`group flex items-start transition-colors cursor-pointer relative ${density === 'compact' ? 'gap-3 px-3 py-2' : 'gap-4 px-5 py-4'} ${
+            isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10" : "bg-card hover:bg-secondary/40"
+          }`}
+        >
+
         {/* Avatar */}
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 overflow-hidden ${getAvatarColor(companyStr)}`}>
           {(() => {
@@ -326,14 +461,16 @@ const JobCard = forwardRef<HTMLDivElement, {
           >
             {displayStatus}
           </span>
-          <div className="text-muted-foreground/50 w-4 h-4 flex items-center justify-center">
+          {ShareMenu}
+            <div className="text-muted-foreground/50 w-4 h-4 flex items-center justify-center group-hover:opacity-100 opacity-50">
             {isExpanded
               ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
               : <ChevronDown className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />}
           </div>
         </div>
-      </div>
 
+        </div>
+      )}
       {/* ── Accordion ── */}
       <AnimatePresence>
         {isExpanded && edit && (
@@ -343,8 +480,8 @@ const JobCard = forwardRef<HTMLDivElement, {
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <div className={`${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} bg-[#fcfcfc] dark:bg-muted/10 border-t border-border`}>
-              <div className={`${density === "compact" ? "ml-[44px] gap-4" : "ml-[56px] gap-6"} flex flex-col`}>
+            <div className={`${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b -mt-1" : ""} bg-[#fcfcfc] dark:bg-muted/10 border-t border-border`}>
+              <div className={`${isGridView ? "" : (density === "compact" ? "ml-[44px]" : "ml-[56px]")} gap-4 flex flex-col`}>
 
                 {/* Status */}
                 <div>

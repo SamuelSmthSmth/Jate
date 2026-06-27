@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus,
+  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List,
   CalendarDays, X, Moon, Sun,
   ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, Copy, FileText, Share2,
 } from "lucide-react";
@@ -346,6 +346,7 @@ export default function App() {
   const [dark, setDark] = useState(false);
   const { fontFamily, density, backgroundStyle, statusColors, setFontFamily, setDensity, setBackgroundStyle, setStatusColor } = useThemeSettings();
   const [activeNav, setActiveNav] = useState<NavItem>("my-jobs");
+  const [viewType, setViewType] = useState<"list" | "grid">("list");
   const [copiedIcal, setCopiedIcal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
@@ -522,6 +523,37 @@ export default function App() {
     return acc;
   }, {} as Record<Filter, number>);
 
+
+  // Derived data for agenda
+  const agendaJobs = typedJobs
+    .filter((j) => j.status !== 'Archived')
+    .map((j) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let dateStr = "";
+      let isInterview = false;
+      if (j.interviewDate && new Date(j.interviewDate) >= today) {
+        dateStr = j.interviewDate;
+        isInterview = true;
+      } else if (j.deadline && new Date(j.deadline) >= today) {
+        dateStr = j.deadline;
+      }
+      return { ...j, agendaDate: dateStr, isInterview };
+    })
+    .filter((j) => j.agendaDate)
+    .sort((a, b) => new Date(a.agendaDate).getTime() - new Date(b.agendaDate).getTime())
+    .slice(0, 5);
+
+  const getRelativeTime = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr);
+    const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Tomorrow";
+    return `In ${diffDays} days`;
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
 
@@ -567,6 +599,33 @@ export default function App() {
               <Icon className="w-4 h-4 shrink-0" />{label}
             </button>
           ))}
+
+          {agendaJobs.length > 0 && (
+            <div className="mt-6 mb-2">
+              <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Upcoming Agenda</h3>
+              <div className="flex flex-col gap-0.5">
+                {agendaJobs.map(j => (
+                  <button 
+                    key={j.id} 
+                    onClick={() => {
+                      setActiveNav('my-jobs');
+                      setFilter('All');
+                      // We could theoretically scroll to it, but just setting view is a good start
+                    }}
+                    className="flex flex-col gap-0.5 px-3 py-2 rounded-md text-left transition-colors hover:bg-muted active:scale-95 group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${j.isInterview ? 'bg-accent' : 'bg-blue-500'}`} />
+                      <span className="text-xs font-medium text-foreground truncate group-hover:text-accent-foreground transition-colors">{j.company} - {j.role || j.title}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground pl-3.5 leading-tight font-mono">
+                      {j.isInterview ? 'Interview ' : 'Due '}{getRelativeTime(j.agendaDate)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* User profile + quick-join */}
@@ -724,6 +783,16 @@ export default function App() {
                 </Dialog.Portal>
               </Dialog.Root>
             )}
+            {activeNav === "my-jobs" && (
+              <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border shrink-0">
+                <button onClick={() => setViewType('list')} className={`p-1.5 rounded-md transition-colors ${viewType === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <List className="w-4 h-4" />
+                </button>
+                <button onClick={() => setViewType('grid')} className={`p-1.5 rounded-md transition-colors ${viewType === 'grid' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <button onClick={() => {
               const toggle = () => {
                 const isDark = document.documentElement.classList.toggle('dark');
@@ -815,7 +884,7 @@ export default function App() {
                   )}
                 </div>
               ) : (
-                <div className="job-list border border-border rounded-lg overflow-hidden">
+                <div className={viewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}>
                   <AnimatePresence mode="popLayout">
                   {filtered.map((job, idx) => (
                     <JobCard
@@ -823,7 +892,8 @@ export default function App() {
                       job={job}
                       updateJob={updateJob}
                       deleteJob={deleteJob}
-                      isLast={idx === filtered.length - 1}
+                      isLast={viewType === 'grid' ? true : (idx === filtered.length - 1)}
+                      isGridView={viewType === 'grid'}
                     />
                   ))}
                   </AnimatePresence>
