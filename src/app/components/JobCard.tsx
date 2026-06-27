@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useThemeSettings } from "../../hooks/useThemeSettings";
+
 import {
   MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2, Archive, RefreshCw, FolderOutput, Share2
 } from "lucide-react";
@@ -133,21 +135,34 @@ function FieldInput({ label, value, onChange, type = "text", placeholder, disabl
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function JobCard({
-  job,
-  updateJob,
-  deleteJob,
-  isLast = false,
-  readOnly = false,
-}: {
+
+function hexToRgb(hex: string) {
+  if (!hex) return '59, 130, 246'; // default blue
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+const JobCard = forwardRef<HTMLDivElement, {
   job: Job;
   updateJob?: (id: string, data: Record<string, unknown>) => Promise<void>;
+  deleteJob?: (id: string) => Promise<void>;
   isLast?: boolean;
   readOnly?: boolean;
   selectMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
-}) {
+}>(({
+  job,
+  updateJob,
+  deleteJob,
+  isLast = false,
+  readOnly = false,
+}, ref) => {
+  const { density, statusColors } = useThemeSettings();
   const [isExpanded, setIsExpanded] = useState(false);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [logoError, setLogoError] = useState(false);
@@ -238,6 +253,7 @@ export default function JobCard({
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -248,7 +264,7 @@ export default function JobCard({
       {/* ── Collapsed row ── */}
       <div
         onClick={handleExpand}
-        className={`group flex items-start gap-4 px-5 py-4 transition-colors cursor-pointer ${
+        className={`group flex items-start transition-colors cursor-pointer ${density === 'compact' ? 'gap-3 px-3 py-2' : 'gap-4 px-5 py-4'} ${
           isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10" : "bg-card hover:bg-secondary/40"
         }`}
       >
@@ -300,8 +316,13 @@ export default function JobCard({
         {/* Badge & Chevron */}
         <div className="flex items-center gap-4 shrink-0 mt-1">
           <span
-            className={`text-[11px] px-2.5 py-1 rounded-md font-medium ${statusStyles[displayStatus] ?? statusStyles.Applied}`}
-            style={{ fontFamily: "'Geist Mono', monospace" }}
+            className={`text-[11px] px-2.5 py-1 rounded-md font-medium border`}
+            style={{ 
+              fontFamily: "'Geist Mono', monospace", 
+              backgroundColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.15)`,
+              color: `rgb(${hexToRgb(statusColors[displayStatus])})`,
+              borderColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.3)`
+            }}
           >
             {displayStatus}
           </span>
@@ -322,8 +343,8 @@ export default function JobCard({
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <div className="px-5 pb-6 pt-4 bg-[#fcfcfc] dark:bg-muted/10 border-t border-border">
-              <div className="ml-[56px] flex flex-col gap-6">
+            <div className={`${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} bg-[#fcfcfc] dark:bg-muted/10 border-t border-border`}>
+              <div className={`${density === "compact" ? "ml-[44px] gap-4" : "ml-[56px] gap-6"} flex flex-col`}>
 
                 {/* Status */}
                 <div>
@@ -453,4 +474,6 @@ export default function JobCard({
       </AnimatePresence>
     </motion.div>
   );
-}
+});
+
+export default JobCard;

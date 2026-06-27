@@ -14,6 +14,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useJobs } from "../hooks/useJobs";
 import { loginWithEmail, registerWithEmail } from "../hooks/useEmailAuth";
 import JobCard from "./components/JobCard";
+import { useThemeSettings } from "../hooks/useThemeSettings";
 import JobCalendar from "./components/JobCalendar";
 
 import FriendsTab from "./components/FriendsTab";
@@ -121,8 +122,7 @@ function exportCSV(jobs: Job[]) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-2.5"
-       style={{ fontFamily: "'Geist Mono', monospace" }}>
+    <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-2.5 font-mono">
       {children}
     </p>
   );
@@ -140,9 +140,17 @@ function LoadingScreen() {
     return () => clearTimeout(timer);
   }, []);
 
+
+  const getBgClass = (style: string) => {
+    if (style === 'grid') return "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px]";
+    if (style === 'diagonal') return "bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)] dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]";
+    if (style === 'plus') return "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]";
+    return "";
+  };
+
   return (
     <div className="size-full flex items-center justify-center bg-background"
-         style={{ fontFamily: "'Geist', sans-serif" }}>
+         >
       <div className={`h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${expanded ? "w-24" : "w-10"}`}>
         <div className="flex items-center justify-center select-none font-bold text-base text-primary-foreground">
           <span>J</span>
@@ -219,9 +227,17 @@ function LoginScreen({
     }
   }
 
+
+  const getBgClass = (style: string) => {
+    if (style === 'grid') return "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px]";
+    if (style === 'diagonal') return "bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)] dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]";
+    if (style === 'plus') return "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]";
+    return "";
+  };
+
   return (
     <div className="size-full flex items-center justify-center bg-background"
-         style={{ fontFamily: "'Geist', sans-serif" }}>
+         >
       <div className="flex flex-col items-center gap-6 text-center max-w-sm w-full px-6">
         {/* Logo */}
         <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-sm">
@@ -324,10 +340,11 @@ export default function App() {
     }
   }, []);
   const { user, loading, loginWithGoogle, logout } = useAuth();
-  const { jobs, addJob, updateJob, archiveJob, restoreJob, hardDeleteJob } = useJobs(user?.uid ?? null);
+  const { jobs, addJob, updateJob, deleteJob } = useJobs(user?.uid ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [dark, setDark] = useState(false);
+  const { fontFamily, density, backgroundStyle, statusColors, setFontFamily, setDensity, setBackgroundStyle, setStatusColor } = useThemeSettings();
   const [activeNav, setActiveNav] = useState<NavItem>("my-jobs");
   const [copiedIcal, setCopiedIcal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -507,9 +524,22 @@ export default function App() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
+
+  const getBgClass = (style: string) => {
+    if (style === 'grid') return "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px]";
+    if (style === 'diagonal') return "bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)] dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]";
+    if (style === 'plus') return "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]";
+    return "";
+  };
+
   return (
-    <div className={`size-full flex overflow-hidden bg-background text-foreground${dark ? " dark" : ""}`}
-         style={{ fontFamily: "'Geist', sans-serif" }}>
+    <div className={`size-full flex overflow-hidden bg-background text-foreground ${dark ? "dark" : ""} font-${fontFamily} ${getBgClass(backgroundStyle)}`}>
+      {backgroundStyle === 'animated' && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary/20 blur-[100px]" />
+          <div className="absolute -bottom-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
+        </div>
+      )}
 
       {/* ── Sidebar ── */}
       <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-secondary border-r border-border h-full">
@@ -559,8 +589,7 @@ export default function App() {
               <p className="text-xs font-medium text-foreground truncate leading-tight">
                 {user.displayName ?? "You"}
               </p>
-              <p className="text-[10px] text-muted-foreground truncate leading-tight"
-                 style={{ fontFamily: "'Geist Mono', monospace" }}>
+              <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
                 {user.friendCode ?? ""}
               </p>
             </div>
@@ -581,8 +610,7 @@ export default function App() {
           <div className="flex gap-1.5">
             <input type="text" value={friendCode} onChange={(e) => setFriendCode(e.target.value)}
               placeholder="e.g. jt-a9x2"
-              className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              style={{ fontFamily: "'Geist Mono', monospace" }} />
+              className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono" />
             <button onClick={() => setFriendCode("")}
               className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out shrink-0">
               Join
@@ -623,7 +651,7 @@ export default function App() {
                   <Dialog.Overlay className="fixed inset-0 bg-black/25 backdrop-blur-[1px] z-40" />
                   <Dialog.Content
                     className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card rounded-xl border border-border shadow-xl p-6 focus:outline-none"
-                    style={{ fontFamily: "'Geist', sans-serif" }}>
+                    >
                     <div className="flex items-center justify-between mb-5">
                       <Dialog.Title className="text-base font-semibold text-foreground">Add Application</Dialog.Title>
                       <Dialog.Close className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out">
@@ -648,14 +676,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-1.5 mb-4">
-                        <label className="text-[11px] font-medium text-foreground">Status</label>
-                        <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-                          className="px-3 py-2 rounded-md border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-                          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
-
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-medium text-foreground">Location</label>
@@ -677,8 +697,7 @@ export default function App() {
                         <label className="text-xs font-medium text-foreground">Application Deadline</label>
                         <input type="date" value={form.deadline}
                           onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
-                          className="px-3 py-2 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                          style={{ fontFamily: "'Geist Mono', monospace" }} />
+                          className="px-3 py-2 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono" />
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-medium text-foreground">Notes</label>
@@ -742,7 +761,7 @@ export default function App() {
                     {f}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                         filter === f ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
-                      }`} style={{ fontFamily: "'Geist Mono', monospace" }}>
+                      } font-mono`}>
                       {counts[f]}
                     </span>
                   </button>
@@ -761,19 +780,17 @@ export default function App() {
                         sortKey === key
                           ? "border-primary/40 bg-accent text-accent-foreground"
                           : "border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
-                      }`} style={{ fontFamily: "'Geist Mono', monospace" }}>
+                      } font-mono`}>
                       <ArrowUpDown className="w-3 h-3" />{label}
                     </button>
                   );
                 })}
                 <button onClick={() => exportCSV(filtered)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
-                  style={{ fontFamily: "'Geist Mono', monospace" }}>
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out font-mono">
                   <Download className="w-3 h-3" />Export CSV
                 </button>
                 <button onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
-                  style={{ fontFamily: "'Geist Mono', monospace" }}>
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out font-mono">
                   <Upload className="w-3 h-3" />Import CSV
                 </button>
                 <input type="file" accept=".csv" ref={fileInputRef} onChange={handleImportCSV} className="hidden" />
@@ -805,7 +822,7 @@ export default function App() {
                       key={job.id}
                       job={job}
                       updateJob={updateJob}
-                      archiveJob={archiveJob}
+                      deleteJob={deleteJob}
                       isLast={idx === filtered.length - 1}
                     />
                   ))}
@@ -888,7 +905,7 @@ export default function App() {
                   {/* Share code */}
                   <div className="flex items-center justify-between px-5 py-4">
                     <span className="text-sm text-muted-foreground">Your share code</span>
-                    <span className="text-sm font-medium text-foreground" style={{ fontFamily: "'Geist Mono', monospace" }}>
+                    <span className="text-sm font-medium text-foreground font-mono">
                       {user.friendCode ?? "—"}
                     </span>
                   </div>
@@ -970,6 +987,86 @@ export default function App() {
                               />
                             ))}
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Aesthetics Engine Section */}
+              <div>
+                <h2 className="text-xl font-semibold mb-4 text-foreground">Aesthetics Engine</h2>
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                  {/* Typography */}
+                  <div className="flex items-center justify-between px-5 py-4 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Typography</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Select your preferred font family</p>
+                    </div>
+                    <select
+                      value={fontFamily}
+                      onChange={(e) => setFontFamily(e.target.value as any)}
+                      className="px-3 py-1.5 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none"
+                    >
+                      <option value="sans">Sans Serif (Inter)</option>
+                      <option value="mono">Monospace (JetBrains)</option>
+                      <option value="serif">Serif (Merriweather)</option>
+                      <option value="outfit">Sans Serif (Outfit)</option>
+                      <option value="roboto">Sans Serif (Roboto)</option>
+                      <option value="playfair">Serif (Playfair Display)</option>
+                    </select>
+                  </div>
+                  {/* Density */}
+                  <div className="flex items-center justify-between px-5 py-4 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Card Density</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Adjust spacing and padding</p>
+                    </div>
+                    <select
+                      value={density}
+                      onChange={(e) => setDensity(e.target.value as any)}
+                      className="px-3 py-1.5 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none"
+                    >
+                      <option value="comfortable">Comfortable</option>
+                      <option value="compact">Compact</option>
+                    </select>
+                  </div>
+                  {/* Background Style */}
+                  <div className="flex items-center justify-between px-5 py-4 gap-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Background Style</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Customize the app background</p>
+                    </div>
+                    <select
+                      value={backgroundStyle}
+                      onChange={(e) => setBackgroundStyle(e.target.value as any)}
+                      className="px-3 py-1.5 rounded-md border border-border bg-input-background text-sm text-foreground focus:outline-none"
+                    >
+                      <option value="solid">Solid Color</option>
+                      <option value="grid">Dotted Grid</option>
+                      <option value="animated">Static Orbs</option>
+                      <option value="diagonal">Diagonal Stripes</option>
+                      <option value="plus">Plus Grid</option>
+                    </select>
+                  </div>
+                  {/* Custom Status Colors */}
+                  <div className="flex flex-col gap-4 px-5 py-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Status Colors</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Assign custom colors to job statuses</p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                      {STATUSES.map(status => (
+                        <div key={status} className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={statusColors[status] || "#000000"}
+                            onChange={(e) => setStatusColor(status, e.target.value)}
+                            className="w-8 h-8 rounded cursor-pointer border-none p-0 appearance-none bg-transparent"
+                          />
+                          <span className="text-sm font-medium text-foreground">{status}</span>
                         </div>
                       ))}
                     </div>

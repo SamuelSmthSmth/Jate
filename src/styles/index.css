@@ -25,3 +25,12 @@
     clip-path: polygon(100% -200%, 100% 300%, -400% 300%);
   }
 }
+
+
+.dark .rbc-off-range-bg {
+  background-color: var(--muted);
+}
+
+.dark .rbc-today {
+  background-color: var(--card);
+}
