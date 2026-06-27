@@ -11,7 +11,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Status = "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
+type Status = "Not Applied" | "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
 type SalaryType = "Paid" | "Volunteer";
 
 type Job = {
@@ -49,9 +49,10 @@ type EditState = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUSES: Status[] = ["Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"];
+const STATUSES: Status[] = ["Not Applied", "Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"];
 
 const statusStyles: Record<Status, string> = {
+  "Not Applied": "bg-white text-zinc-500 border border-zinc-200 dark:bg-transparent dark:text-zinc-400 dark:border-zinc-800/50",
   Applied:      "bg-white text-amber-600 border border-amber-200 dark:bg-transparent dark:text-amber-400 dark:border-amber-800/50",
   Waiting:      "bg-white text-gray-400 border border-dashed border-gray-300 dark:bg-transparent dark:text-gray-500 dark:border-gray-700",
   Assessment:   "bg-white text-violet-600 border border-violet-200 dark:bg-transparent dark:text-violet-400 dark:border-violet-800/50",
@@ -183,7 +184,7 @@ const JobCard = forwardRef<HTMLDivElement, {
     setIsExpanded(true);
     if (!edit) {
       setEdit({
-        status: (job.status as Status) ?? "Applied",
+        status: (job.status as Status) ?? "Not Applied",
         deadline: job.deadline ?? job.deadlines?.signup ?? "",
         appliedDate: job.appliedDate ?? "",
         interviewDate: job.interviewDate ?? job.deadlines?.interview ?? "",

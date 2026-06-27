@@ -21,7 +21,7 @@ import FriendsTab from "./components/FriendsTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Status = "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
+type Status = "Not Applied" | "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
 type SalaryType = "Paid" | "Volunteer";
 type NavItem = "my-jobs" | "calendar" | "friends" | "docs" | "settings";
 type Filter = "All" | Status;
@@ -66,9 +66,9 @@ const navItems: { id: NavItem; label: string; icon: typeof Briefcase }[] = [
   { id: "settings",     label: "Settings",     icon: Settings     },
 ];
 
-const FILTERS: Filter[] = ["All", "Applied", "Waiting", "Assessment", "Interviewing", "Rejected", "Offer"];
-const STATUSES: Status[] = ["Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"];
-const EMPTY_FORM = { company: "", role: "", location: "", status: "Applied" as Status, deadline: "", notes: "" };
+const FILTERS: Filter[] = ["All", "Not Applied", "Applied", "Waiting", "Assessment", "Interviewing", "Rejected", "Offer"];
+const STATUSES: Status[] = ["Not Applied", "Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"];
+const EMPTY_FORM = { company: "", role: "", location: "", status: "Not Applied" as Status, deadline: "", notes: "" };
 
 const PAGE_TITLES: Record<NavItem, string> = {
   "my-jobs":      "My Jobs",
@@ -449,12 +449,12 @@ export default function App() {
         await Promise.all(
           rows.map(async (row) => {
             if (!row.Company) return;
-            const statusStr = row.Status || "Applied";
+            const statusStr = row.Status || "Not Applied";
             const isPaid = row.Paid === "Yes";
             await addJob({
               company: row.Company,
               role: row.Title || "",
-              status: ["Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"].includes(statusStr) ? statusStr as Status : "Applied",
+              status: ["Not Applied", "Applied", "Waiting", "Assessment", "Interviewing", "Offer", "Rejected"].includes(statusStr) ? statusStr as Status : "Not Applied",
               deadline: row.Deadline || null,
               interviewDate: row.Interview || null,
               postingUrl: row.URL || null,
