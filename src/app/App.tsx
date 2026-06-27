@@ -961,7 +961,7 @@ export default function App() {
               
               {/* Profile Section */}
               <div>
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Profile Settings</h2>
+                <h2 className="text-xl font-semibold mb-6 text-foreground">Profile Settings</h2>
                 <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
                   {/* Display name */}
                   <div className="flex items-center justify-between px-5 py-4 gap-3">
@@ -1014,7 +1014,7 @@ export default function App() {
 
                             {/* Privacy Section */}
               <div>
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Privacy</h2>
+                <h2 className="text-xl font-semibold mb-6 text-foreground">Privacy</h2>
                 <div className="bg-card rounded-lg border border-border flex flex-col shadow-sm divide-y divide-border">
                   <div className="p-5 flex items-center justify-between">
                     <div>
@@ -1041,12 +1041,74 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              </div>
 
+
+              
+              {/* Appearance Section */}
+              <div>
+                <h2 className="text-xl font-semibold mb-6 text-foreground">Appearance</h2>
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                  {/* Dark Mode */}
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Dark Mode</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Toggle OLED dark mode</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const toggle = () => {
+                          const isDark = document.documentElement.classList.toggle('dark');
+                          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                          setDark(isDark);
+                        };
+                        if (!document.startViewTransition) toggle();
+                        else document.startViewTransition(() => toggle());
+                      }}
+                      className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out flex items-center gap-2"
+                    >
+                      <Moon className="w-4 h-4 hidden dark:block" />
+                      <Sun className="w-4 h-4 block dark:hidden" />
+                      Toggle Theme
+                    </button>
+                  </div>
+                  {/* Accent Color */}
+                  <div className="flex flex-col gap-4 px-5 py-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Accent Color</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Customize your app's primary color</p>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { label: "Generic", colors: ["#3b82f6", "#a855f7", "#ef4444", "#22c55e", "#f59e0b"] },
+                        { label: "Pastel", colors: ["#fbcfe8", "#a7f3d0", "#ddd6fe", "#fcd34d", "#bbf7d0"] },
+                        { label: "Muted", colors: ["#64748b", "#78716c", "#71717a", "#737373", "#57534e"] }
+                      ].map(group => (
+                        <div key={group.label} className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-muted-foreground w-14">{group.label}</span>
+                          <div className="flex gap-2">
+                            {group.colors.map(color => (
+                              <button
+                                key={color}
+                                onClick={() => {
+                                  document.documentElement.style.setProperty('--accent-hex', color);
+                                  localStorage.setItem('accentColor', color);
+                                }}
+                                className="w-6 h-6 rounded-full cursor-pointer hover:scale-110 active:scale-95 transition-transform"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Aesthetics Engine Section */}
               <div>
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Aesthetics Engine</h2>
+                <h2 className="text-xl font-semibold mb-6 text-foreground">Aesthetics Engine</h2>
                 <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
                   {/* Typography */}
                   <div className="flex items-center justify-between px-5 py-4 gap-4">
@@ -1125,7 +1187,7 @@ export default function App() {
 
               {/* External Calendar Sync */}
               <div>
-                <h2 className="text-xl font-semibold mb-4 text-foreground">External Calendar Sync</h2>
+                <h2 className="text-xl font-semibold mb-6 text-foreground">External Calendar Sync</h2>
                 <div className="bg-card rounded-lg border border-border p-5 flex flex-col gap-4 shadow-sm">
                   <div>
                     <h3 className="text-sm font-medium text-foreground">Subscribe via iCal</h3>
@@ -1162,6 +1224,7 @@ export default function App() {
                 </button>
               </div>
 
+              </div>
           </motion.div>
         )}
         </AnimatePresence>

@@ -363,7 +363,7 @@ const JobCard = forwardRef<HTMLDivElement, {
               })()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-[15px] font-semibold text-foreground truncate reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`} tabIndex={0}>{companyStr}</p>
+              <p className="text-[15px] font-semibold text-foreground truncate">{companyStr}</p>
               <p className="text-[13px] text-muted-foreground truncate mt-0.5">{roleStr}</p>
             </div>
           </div>
@@ -371,7 +371,7 @@ const JobCard = forwardRef<HTMLDivElement, {
           {/* Middle: Dates and Location */}
           <div className="flex flex-col gap-2 flex-1 mb-5">
             {job.location && (
-              <span className="flex items-center gap-2 text-[11px] text-muted-foreground"
+              <span tabIndex={0} className={`flex items-center gap-2 text-[11px] text-muted-foreground w-fit rounded reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`}
                 style={{ fontFamily: "'Geist Mono', monospace" }}>
                 <MapPin className="w-3.5 h-3.5 text-muted-foreground/70" />{job.location}
               </span>
@@ -440,12 +440,12 @@ const JobCard = forwardRef<HTMLDivElement, {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className={`text-[15px] font-semibold text-foreground truncate reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`} tabIndex={0}>{companyStr}</p>
+          <p className="text-[15px] font-semibold text-foreground truncate">{companyStr}</p>
           <p className="text-[13px] text-muted-foreground truncate mt-0.5">{roleStr}</p>
 
           <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 mt-2.5">
             {job.location && (
-              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              <span tabIndex={0} className={`flex items-center gap-1.5 text-[11px] text-muted-foreground w-fit rounded reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`}
                 style={{ fontFamily: "'Geist Mono', monospace" }}>
                 <MapPin className="w-3 h-3 text-muted-foreground/70" />{job.location}
               </span>
