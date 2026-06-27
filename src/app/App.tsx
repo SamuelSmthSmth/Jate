@@ -884,20 +884,29 @@ export default function App() {
                   )}
                 </div>
               ) : (
-                <div className={viewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}>
-                  <AnimatePresence mode="popLayout">
-                  {filtered.map((job, idx) => (
-                    <JobCard
-                      key={job.id}
-                      job={job}
-                      updateJob={updateJob}
-                      deleteJob={deleteJob}
-                      isLast={viewType === 'grid' ? true : (idx === filtered.length - 1)}
-                      isGridView={viewType === 'grid'}
-                    />
-                  ))}
-                  </AnimatePresence>
-                </div>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={viewType}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.08 }}
+                    className={viewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}
+                  >
+                    <AnimatePresence mode="popLayout">
+                    {filtered.map((job, idx) => (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        updateJob={updateJob}
+                        deleteJob={deleteJob}
+                        isLast={viewType === 'grid' ? true : (idx === filtered.length - 1)}
+                        isGridView={viewType === 'grid'}
+                      />
+                    ))}
+                    </AnimatePresence>
+                  </motion.div>
+                </AnimatePresence>
               )}
             </div>
           </motion.div>

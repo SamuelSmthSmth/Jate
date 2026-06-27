@@ -315,15 +315,15 @@ const JobCard = forwardRef<HTMLDivElement, {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, height: 0 }}
       transition={{ duration: 0.2 }}
-      className={isGridView ? "h-full" : (isLast ? "" : "border-b border-border")}
+      className={isGridView ? "flex flex-col" : (isLast ? "" : "border-b border-border")}
     >
       {/* ── Collapsed row / Grid Tile ── */}
       {isGridView ? (
         <div
           onClick={handleExpand}
           ref={cardRef}
-          className={`flex flex-col h-full transition-colors cursor-pointer rounded-xl border border-border p-5 relative group ${
-            isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10" : "bg-card hover:bg-secondary/40"
+          className={`flex flex-col transition-colors cursor-pointer rounded-xl border border-border p-5 relative group ${
+            isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10 rounded-b-none border-b-0" : "bg-card hover:bg-secondary/40"
           }`}
         >
           {/* Top: Avatar and Titles */}
@@ -480,7 +480,7 @@ const JobCard = forwardRef<HTMLDivElement, {
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <div className={`${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b -mt-1" : ""} bg-[#fcfcfc] dark:bg-muted/10 border-t border-border`}>
+            <div className={`${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b -mt-1 bg-[#fcfcfc] dark:bg-accent/10" : "bg-[#fcfcfc] dark:bg-muted/10"} border-t border-border`}>
               <div className={`${isGridView ? "" : (density === "compact" ? "ml-[44px]" : "ml-[56px]")} gap-4 flex flex-col`}>
 
                 {/* Status */}
