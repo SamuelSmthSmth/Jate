@@ -641,7 +641,7 @@ export default function App() {
       <div className="relative z-10 flex size-full">
 
       {/* ── Sidebar ── */}
-      <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-secondary border-r border-border h-full">
+      <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-secondary/30 backdrop-blur-md border-r border-border h-full">
         {/* JATE logo */}
         <div className="px-4 pt-5 pb-4 flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
@@ -782,7 +782,7 @@ export default function App() {
                 <Dialog.Portal>
                   <Dialog.Overlay className="fixed inset-0 bg-black/25 backdrop-blur-[1px] z-40" />
                   <Dialog.Content
-                    className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card rounded-xl border border-border shadow-xl p-6 focus:outline-none"
+                    className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card/30 backdrop-blur-md rounded-xl border border-border shadow-xl p-6 focus:outline-none"
                     >
                     <div className="flex items-center justify-between mb-5">
                       <Dialog.Title className="text-base font-semibold text-foreground">Add Application</Dialog.Title>
@@ -1020,7 +1020,7 @@ export default function App() {
               {/* Profile Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Profile Settings</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card/30 backdrop-blur-md shadow-sm">
                   {/* Display name */}
                   <div className="flex items-center justify-between px-5 py-4 gap-3">
                     <span className="text-sm text-muted-foreground shrink-0">Display name</span>
@@ -1073,7 +1073,7 @@ export default function App() {
                             {/* Privacy Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Privacy</h2>
-                <div className="bg-card rounded-lg border border-border flex flex-col shadow-sm divide-y divide-border">
+                <div className="bg-card/30 backdrop-blur-md rounded-lg border border-border flex flex-col shadow-sm divide-y divide-border">
                   <div className="p-5 flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-medium text-foreground">Public Profile</h3>
@@ -1105,7 +1105,7 @@ export default function App() {
               {/* Appearance Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Appearance</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card/30 backdrop-blur-md shadow-sm">
                   {/* Dark Mode */}
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
@@ -1167,7 +1167,7 @@ export default function App() {
               {/* Aesthetics Engine Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Aesthetics Engine</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card shadow-sm">
+                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card/30 backdrop-blur-md shadow-sm">
                   {/* Typography */}
                   <div className="flex items-center justify-between px-5 py-4 gap-4">
                     <div>
@@ -1257,7 +1257,7 @@ export default function App() {
               {/* External Calendar Sync */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">External Calendar Sync</h2>
-                <div className="bg-card rounded-lg border border-border p-5 flex flex-col gap-4 shadow-sm">
+                <div className="bg-card/30 backdrop-blur-md rounded-lg border border-border p-5 flex flex-col gap-4 shadow-sm">
                   <div>
                     <h3 className="text-sm font-medium text-foreground">Subscribe via iCal</h3>
                     <p className="text-xs text-muted-foreground mt-1">
