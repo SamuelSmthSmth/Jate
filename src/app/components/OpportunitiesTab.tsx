@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import {
   TrackrIndustry, TrackrProgramme, TrackrType,
-  TRACKR_INDUSTRIES, TRACKR_INDUSTRY_TYPES, TRACKR_SEASONS,
+  TRACKR_INDUSTRIES, TRACKR_INDUSTRY_TYPES, TRACKR_INDUSTRY_SEASONS,
   TrackrSeason, programmeToJob,
 } from "../../lib/trackr";
 import { useTrackrIndustry } from "../../hooks/useTrackr";
@@ -89,7 +89,7 @@ function IndustryTab({
 
 export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps) {
   const [industry, setIndustry] = useState<TrackrIndustry>("Finance");
-  const [season, setSeason] = useState<TrackrSeason>("2027");
+  const [season, setSeason] = useState<TrackrSeason>(TRACKR_INDUSTRY_SEASONS.Finance[0]);
   const [typeFilter, setTypeFilter] = useState<TrackrType | "all">("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -181,13 +181,16 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
             label={label}
             color={color}
             selected={industry === id}
-            onClick={() => setIndustry(id)}
+            onClick={() => {
+              setIndustry(id);
+              setSeason(TRACKR_INDUSTRY_SEASONS[id][0]);
+            }}
           />
         ))}
         <div className="flex-1" />
         {/* Season selector on the right */}
         <div className="flex items-center gap-1.5 ml-4 py-2 shrink-0">
-          {TRACKR_SEASONS.map((s) => (
+          {TRACKR_INDUSTRY_SEASONS[industry].map((s) => (
             <SeasonPill key={s} season={s} selected={season === s} onClick={() => setSeason(s)} />
           ))}
         </div>

@@ -14,6 +14,7 @@ const TYPE_COLORS: Record<TrackrType, string> = {
   "off-cycle-internships": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   "industrial-placements": "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
   "vacation-schemes":      "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+  "training-contracts":     "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
 };
 
 function fmtDate(iso?: string | null) {

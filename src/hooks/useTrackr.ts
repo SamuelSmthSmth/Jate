@@ -96,13 +96,15 @@ export function useTrackrIndustry({
         const data: TrackrProgramme[] = await res.json();
         if (!Array.isArray(data) || data.length === 0) continue; // rate-limited or no data — stay silent
 
+        // Show the data in this session even if persisting to the shared cache fails.
+        fetched.push(...data);
+
         const { error: upsertErr } = await supabase.from("trackr_cache").upsert({
           key: trackrCacheKey(region, industry, t, season),
           data,
           fetched_at: new Date().toISOString(),
         });
         if (upsertErr) console.error("Failed to write Trackr cache:", upsertErr);
-        else fetched.push(...data);
       } catch {
         // network error — stay silent and keep whatever is cached
       }

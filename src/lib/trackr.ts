@@ -17,9 +17,10 @@ export type TrackrType =
   | "spring-weeks"
   | "off-cycle-internships"
   | "industrial-placements"
-  | "vacation-schemes";
+  | "vacation-schemes"
+  | "training-contracts";
 export type TrackrRegion = "UK";
-export type TrackrSeason = "2026" | "2027" | "2028";
+export type TrackrSeason = "2025" | "2026" | "2027" | "2028";
 
 export const TRACKR_INDUSTRIES: { id: TrackrIndustry; label: string; color: string }[] = [
   { id: "Finance", label: "Finance", color: "#10b981" },
@@ -33,19 +34,25 @@ export const TRACKR_TYPES: { id: TrackrType; label: string; short: string }[] = 
   { id: "off-cycle-internships", label: "Off-Cycle Internships", short: "Off-Cycle" },
   { id: "industrial-placements", label: "Industrial Placements", short: "Placement" },
   { id: "vacation-schemes",      label: "Vacation Schemes",      short: "Vac. Scheme" },
+  { id: "training-contracts",     label: "Training Contracts",    short: "Training Cont." },
 ];
 
-export const TRACKR_SEASONS: TrackrSeason[] = ["2027", "2028", "2026"];
+/** Seasons available per industry — the Trackr API's active/legacy seasons differ
+ *  per industry (Finance/Tech are on 2027, Law is still on 2026). */
+export const TRACKR_INDUSTRY_SEASONS: Record<TrackrIndustry, TrackrSeason[]> = {
+  Finance: ["2027", "2026"],
+  Tech: ["2027", "2026"],
+  Law: ["2026", "2025"],
+};
 
 /** Which types to show per industry (avoids fetching combos that return 0 results) */
 export const TRACKR_INDUSTRY_TYPES: Record<TrackrIndustry, TrackrType[]> = {
   Finance: ["summer-internships", "spring-weeks", "off-cycle-internships", "industrial-placements"],
   Tech:    ["summer-internships", "off-cycle-internships", "industrial-placements"],
-  Law:     ["vacation-schemes", "summer-internships"],
+  Law:     ["vacation-schemes", "training-contracts"],
 };
 
-/** The API `industry` param value per tab. `Law` is unconfirmed — if the Law tab
- *  returns nothing, change it to "Legal". */
+/** The API `industry` param value per tab (confirmed from the Trackr app config). */
 export const INDUSTRY_API_VALUES: Record<TrackrIndustry, string> = {
   Finance: "Finance",
   Tech: "Tech",
