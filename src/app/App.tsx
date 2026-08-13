@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import {
   Briefcase, Settings, LayoutGrid, List,
-  CalendarDays, Moon, Sun,
+  CalendarDays, Moon, Sun, Home,
   ArrowUpDown, Download, Upload, LogOut, Compass,
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
@@ -20,18 +20,20 @@ import LoginScreen from "./components/LoginScreen";
 import AddJobDialog, { AddJobForm } from "./components/AddJobDialog";
 import SettingsView from "./components/SettingsView";
 import OpportunitiesTab from "./components/OpportunitiesTab";
+import HomeView from "./components/HomeView";
 import { getBgClass } from "../lib/backgrounds";
 import { Status, Job } from "./types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type NavItem = "my-jobs" | "calendar" | "opportunities" | "settings";
+type NavItem = "home" | "my-jobs" | "calendar" | "opportunities" | "settings";
 type Filter = "All" | Status;
 type SortKey = "deadline" | "salary";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const navItems: { id: NavItem; label: string; icon: typeof Briefcase }[] = [
+  { id: "home",           label: "Home",          icon: Home          },
   { id: "my-jobs",        label: "My Jobs",       icon: Briefcase    },
   { id: "calendar",       label: "Calendar",       icon: CalendarDays },
   { id: "opportunities",  label: "Opportunities",  icon: Compass      },
@@ -42,6 +44,7 @@ const FILTERS: Filter[] = ["All", "Not Applied", "Applied", "Waiting", "Assessme
 const EMPTY_FORM: AddJobForm = { company: "", role: "", location: "", status: "Not Applied", deadline: "", notes: "" };
 
 const PAGE_TITLES: Record<NavItem, string> = {
+  "home":          "Home",
   "my-jobs":       "My Jobs",
   "calendar":      "Calendar",
   "opportunities": "Opportunities",
@@ -49,6 +52,7 @@ const PAGE_TITLES: Record<NavItem, string> = {
 };
 
 const NAV_PATHS: Record<NavItem, string> = {
+  "home":          "/",
   "my-jobs":       "/myjobs",
   "calendar":      "/calendar",
   "opportunities": "/opportunities",
@@ -67,6 +71,25 @@ function daysFromNow(days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/** True if a valid Supabase session is persisted in localStorage. */
+function hasPersistedSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.endsWith("-auth-token")) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw) as { access_token?: string; expires_at?: number };
+      if (parsed?.access_token && typeof parsed.expires_at === "number" && parsed.expires_at > Math.floor(Date.now() / 1000)) {
+        return true;
+      }
+    }
+  } catch {
+    /* ignore malformed storage */
+  }
+  return false;
 }
 
 function exportCSV(jobs: Job[]) {
@@ -116,7 +139,9 @@ export default function App() {
   const [dark, setDark] = useState(false);
   const { fontFamily, density, backgroundStyle, statusColors, setFontFamily, setDensity, setBackgroundStyle, setStatusColor } = useThemeSettings();
 
-  const activeNav: NavItem = location.pathname.startsWith("/calendar")
+  const activeNav: NavItem = location.pathname === "/" || location.pathname === "/home"
+    ? "home"
+    : location.pathname.startsWith("/calendar")
     ? "calendar"
     : location.pathname.startsWith("/opportunities")
     ? "opportunities"
@@ -125,10 +150,6 @@ export default function App() {
     : "my-jobs";
 
   const go = (id: NavItem) => navigate(NAV_PATHS[id]);
-
-  useEffect(() => {
-    if (location.pathname === "/") navigate("/myjobs", { replace: true });
-  }, [location.pathname, navigate]);
 
   const [isStealthMode, setIsStealthMode] = useState(() => localStorage.getItem("stealthMode") === "true");
   useEffect(() => {
@@ -156,22 +177,23 @@ export default function App() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
-  const [showIntro, setShowIntro] = useState(false);
+  // ── Intro splash (plays BEFORE auth; mobile always, desktop only when signed out) ──
 
-  // ── Intro animation on sign-in (plays fully; skipped on plain refresh) ─────
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    if (window.innerWidth < 768) return true; // mobile: always play
+    return !hasPersistedSession();           // desktop: only if not signed in
+  });
 
   useEffect(() => {
-    if (loading) return;
-    if (user && sessionStorage.getItem("jate-intro") === "1") {
-      sessionStorage.removeItem("jate-intro");
-      setShowIntro(true);
-      const t = window.setTimeout(() => setShowIntro(false), INTRO_DURATION_MS);
-      return () => window.clearTimeout(t);
-    }
-  }, [loading, user]);
+    if (!showSplash) return;
+    const t = window.setTimeout(() => setShowSplash(false), INTRO_DURATION_MS);
+    return () => window.clearTimeout(t);
+  }, [showSplash]);
 
   // ── Auth gates ──────────────────────────────────────────────────────────────
 
+  if (showSplash) return <LoadingScreen />;
   if (loading) return (
     <div className="size-full flex items-center justify-center bg-background">
       <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-sm">
@@ -179,12 +201,11 @@ export default function App() {
       </div>
     </div>
   );
-  if (showIntro) return <LoadingScreen />;
   if (!user) return (
     <LoginScreen
-      onGoogleLogin={() => { sessionStorage.setItem("jate-intro", "1"); return loginWithGoogle(); }}
-      onEmailLogin={async (email, password) => { sessionStorage.setItem("jate-intro", "1"); await loginWithEmail(email, password); }}
-      onEmailRegister={async (email, password) => { sessionStorage.setItem("jate-intro", "1"); await registerWithEmail(email, password); }}
+      onGoogleLogin={loginWithGoogle}
+      onEmailLogin={loginWithEmail}
+      onEmailRegister={registerWithEmail}
     />
   );
 
@@ -442,25 +463,27 @@ export default function App() {
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              {PAGE_TITLES[activeNav]}
-            </h1>
+          {activeNav !== "home" && (
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                {PAGE_TITLES[activeNav]}
+              </h1>
 
-            {activeNav === "my-jobs" && (
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {typedJobs.length} application{typedJobs.length !== 1 ? "s" : ""} tracked
-              </p>
-            )}
-            {activeNav === "opportunities" && (
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Browse Finance, Tech &amp; Law opportunities · powered by Trackr
-              </p>
-            )}
-          </div>
+              {activeNav === "my-jobs" && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {typedJobs.length} application{typedJobs.length !== 1 ? "s" : ""} tracked
+                </p>
+              )}
+              {activeNav === "opportunities" && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Browse Finance, Tech &amp; Law opportunities · powered by Trackr
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
 
-            {activeNav === "my-jobs" && (
+            {(activeNav === "my-jobs" || activeNav === "home") && (
               <AddJobDialog open={showAdd} onOpenChange={setShowAdd} form={form} setForm={setForm} onAdd={handleAddJob} />
             )}
 
@@ -492,6 +515,15 @@ export default function App() {
 
         {/* ══════════════ MY JOBS ══════════════ */}
         <AnimatePresence mode="wait">
+
+        {activeNav === "home" && (
+          <HomeView
+            jobs={typedJobs}
+            userName={user.displayName}
+            onOpenAdd={() => setShowAdd(true)}
+            onNavigate={go}
+          />
+        )}
 
         {activeNav === "my-jobs" && (
           <motion.div
