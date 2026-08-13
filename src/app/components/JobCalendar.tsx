@@ -125,7 +125,7 @@ export default function JobCalendar({ jobs }: JobCalendarProps) {
     const list: any[] = [];
     jobs.forEach((job, i) => {
       const label = job.company ?? "Untitled";
-      const signup = job.deadlines?.signup ?? job.deadline;
+      const signup = job.deadline;
       if (signup) {
         list.push({
           id: `deadline-${job.id ?? i}`,
@@ -137,7 +137,7 @@ export default function JobCalendar({ jobs }: JobCalendarProps) {
           allDay: true,
         });
       }
-      const interview = job.deadlines?.interview ?? job.interviewDate;
+      const interview = job.interviewDate;
       if (interview) {
         list.push({
           id: `interview-${job.id ?? i}`,

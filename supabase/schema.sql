@@ -2,10 +2,12 @@
 -- Run this in the Supabase SQL editor (Dashboard → SQL → New query).
 -- Re-runnable: uses `if not exists` / `drop ... if exists`.
 
--- ── Cleanup: remove the retired "friends" feature on older installs ─────────
+-- ── Cleanup: remove retired columns/features on older installs ──────────────
 drop table if exists public.friends cascade;
 alter table public.profiles drop column if exists friend_code;
 alter table public.profiles drop column if exists is_public;
+alter table public.jobs drop column if exists is_paid;
+alter table public.jobs drop column if exists is_archived;
 
 -- ── Profiles (1:1 with auth.users) ──────────────────────────────────────────
 create table if not exists public.profiles (
@@ -33,10 +35,8 @@ create table if not exists public.jobs (
   interview_date text,
   salary text,
   salary_type text,
-  is_paid boolean,
   trackr_id text,
   trackr_type text,
-  is_archived boolean not null default false,
   created_at timestamptz not null default now()
 );
 

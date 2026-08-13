@@ -6,34 +6,12 @@ import { ShareCardTemplate } from "./ShareCardTemplate";
 import { toPng } from 'html-to-image';
 
 import {
-  MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2, Archive, RefreshCw, FolderOutput, Share2, Copy, Image as ImageIcon
+  MapPin, Calendar, Clock, ChevronDown, ChevronUp, Save, Trash2, Share2, Copy, Image as ImageIcon
 } from "lucide-react";
+import confetti from "canvas-confetti";
+import { Job, Status, SalaryType } from "../../app/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type Status = "Not Applied" | "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
-type SalaryType = "Paid" | "Volunteer";
-
-type Job = {
-  id: string;
-  company: string;
-  role: string;
-  status: Status;
-  deadline?: string;
-  location?: string;
-  notes?: string;
-  appliedDate?: string;
-  postingUrl?: string;
-  portalUrl?: string;
-  salary?: string;
-  salaryType?: SalaryType;
-  interviewDate?: string;
-  title?: string;
-  isPaid?: boolean;
-  deadlines?: { signup?: string; interview?: string };
-  url?: string;
-  [key: string]: unknown;
-};
 
 type EditState = {
   status: Status;
@@ -182,13 +160,13 @@ const JobCard = forwardRef<HTMLDivElement, {
     if (!edit) {
       setEdit({
         status: (job.status as Status) ?? "Not Applied",
-        deadline: job.deadline ?? job.deadlines?.signup ?? "",
+        deadline: job.deadline ?? "",
         appliedDate: job.appliedDate ?? "",
-        interviewDate: job.interviewDate ?? job.deadlines?.interview ?? "",
+        interviewDate: job.interviewDate ?? "",
         postingUrl: job.postingUrl ?? job.url ?? "",
         portalUrl: job.portalUrl ?? "",
         salary: job.salary ?? "",
-        salaryType: job.salaryType ?? (job.isPaid ? "Paid" : "Volunteer"),
+        salaryType: job.salaryType ?? "Volunteer",
         notes: job.notes ?? "",
       });
     }
@@ -222,7 +200,6 @@ const JobCard = forwardRef<HTMLDivElement, {
       salary: edit.salary || null,
       salaryType: edit.salaryType,
       notes: edit.notes || null,
-      isPaid: edit.salaryType === "Paid",
       url: edit.postingUrl || null,
     });
   }
@@ -234,9 +211,9 @@ const JobCard = forwardRef<HTMLDivElement, {
   const displayStatus = (isExpanded && edit ? edit.status : job.status) as Status;
   const handleSingleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    let txt = `🏢 ${job.company} - ${job.role || job.title || "No Role"}\n📍 ${job.location || "Remote"}`;
-    if (job.deadline || job.deadlines?.signup) {
-      txt += `\n⏳ Due: ${new Date(job.deadline || job.deadlines?.signup || "").toLocaleDateString()}`;
+    let txt = `🏢 ${job.company} - ${job.role || "No Role"}\n📍 ${job.location || "Remote"}`;
+    if (job.deadline) {
+      txt += `\n⏳ Due: ${new Date(job.deadline || "").toLocaleDateString()}`;
     }
     if (job.url || job.postingUrl) {
       txt += `\n🔗 ${job.url || job.postingUrl}`;
@@ -307,8 +284,8 @@ const JobCard = forwardRef<HTMLDivElement, {
   );
 
   const companyStr = job.company || "Unknown";
-  const roleStr = job.role || job.title || "No Role";
-  const deadlineStr = job.deadline || job.deadlines?.signup;
+  const roleStr = job.role || "No Role";
+  const deadlineStr = job.deadline;
 
   return (
     <motion.div

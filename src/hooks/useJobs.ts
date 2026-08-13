@@ -20,10 +20,8 @@ export function mapJobRow(row: JobRow) {
     interviewDate: (row.interview_date as string | null) ?? null,
     salary: (row.salary as string | null) ?? null,
     salaryType: (row.salary_type as string | null) ?? null,
-    isPaid: (row.is_paid as boolean | null) ?? null,
     trackrId: (row.trackr_id as string | null) ?? null,
     trackrType: (row.trackr_type as string | null) ?? null,
-    isArchived: (row.is_archived as boolean) ?? false,
   };
 }
 
@@ -41,7 +39,6 @@ const JOB_FIELD_MAP: Record<string, string> = {
   interviewDate: "interview_date",
   salary: "salary",
   salaryType: "salary_type",
-  isPaid: "is_paid",
   trackrId: "trackr_id",
   trackrType: "trackr_type",
 };

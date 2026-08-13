@@ -1,5 +1,5 @@
 import React from 'react';
-import { Job, Status } from './JobCard';
+import { Status } from '../../app/types';
 import { MapPin, Calendar, Clock, DollarSign, Text } from 'lucide-react';
 
 type ShareCardTemplateProps = {
@@ -26,8 +26,8 @@ function fmt(d?: string) {
 export const ShareCardTemplate = React.forwardRef<HTMLDivElement, ShareCardTemplateProps>(
   ({ job, statusColors, getAvatarColor, getDomain, logoError, setLogoError }, ref) => {
     const companyStr = job.company || "Unknown";
-    const roleStr = job.role || job.title || "No Role";
-    const deadlineStr = job.deadline || job.deadlines?.signup;
+    const roleStr = job.role || "No Role";
+    const deadlineStr = job.deadline;
     const displayStatus = job.status as Status;
     const bgHex = statusColors[displayStatus] || '#3b82f6';
     
