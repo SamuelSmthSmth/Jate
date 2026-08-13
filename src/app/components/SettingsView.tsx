@@ -198,14 +198,8 @@ export default function SettingsView({
               >
                 <option value="sans">Sans Serif (Inter)</option>
                 <option value="mono">Monospace (JetBrains)</option>
-                <option value="serif">Serif (Merriweather)</option>
-                <option value="outfit">Sans Serif (Outfit)</option>
-                <option value="roboto">Sans Serif (Roboto)</option>
                 <option value="playfair">Serif (Playfair Display)</option>
-                <option value="comic">Comic Neue</option>
-                <option value="bricolage">Bricolage Grotesque</option>
-                <option value="cinzel">Cinzel</option>
-                <option value="lobster">Lobster</option>
+                <option value="caveat">Handwriting (Caveat)</option>
               </select>
             </div>
             {/* Density */}

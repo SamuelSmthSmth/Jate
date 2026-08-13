@@ -8,17 +8,11 @@ export default {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
-        serif: ['Merriweather', 'serif'],
-        outfit: ['Outfit', 'sans-serif'],
-        roboto: ['Roboto', 'sans-serif'],
         playfair: ['Playfair Display', 'serif'],
-        comic: ['Comic Neue', 'cursive'],
-        bricolage: ['Bricolage Grotesque', 'sans-serif'],
-        cinzel: ['Cinzel', 'serif'],
-        lobster: ['Lobster', 'cursive'],
+        caveat: ['Caveat', 'cursive'],
       }
     },
   },
   plugins: [],
-  safelist: ['font-sans', 'font-mono', 'font-serif', 'font-outfit', 'font-roboto', 'font-playfair', 'font-comic', 'font-bricolage', 'font-cinzel', 'font-lobster'],
+  safelist: ['font-sans', 'font-mono', 'font-playfair', 'font-caveat'],
 }
