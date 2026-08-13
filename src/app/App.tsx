@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import {
-  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List, LayoutDashboard, Lock,
+  Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Plus, LayoutGrid, List, LayoutDashboard, Lock,
   CalendarDays, X, Moon, Sun,
-  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, FileText, Compass,
+  ArrowUpDown, Download, Upload, LogOut, Pencil, Check, FileText, Compass,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import Papa from "papaparse";
 import { supabase } from "../supabase";
@@ -16,14 +17,13 @@ import JobCard from "./components/JobCard";
 import { useThemeSettings } from "../hooks/useThemeSettings";
 import JobCalendar from "./components/JobCalendar";
 
-import FriendsTab from "./components/FriendsTab";
 import OpportunitiesTab from "./components/OpportunitiesTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Status = "Not Applied" | "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
 type SalaryType = "Paid" | "Volunteer";
-type NavItem = "my-jobs" | "calendar" | "friends" | "opportunities" | "settings";
+type NavItem = "my-jobs" | "calendar" | "opportunities" | "settings";
 type Filter = "All" | Status;
 type SortKey = "deadline" | "salary";
 
@@ -49,20 +49,12 @@ type Job = {
   lessonsLearned?: string;
 };
 
-type Friend = {
-  id: string;
-  name: string;
-  code: string;
-  initials: string;
-  color: string;
-};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const navItems: { id: NavItem; label: string; icon: typeof Briefcase }[] = [
   { id: "my-jobs",        label: "My Jobs",       icon: Briefcase    },
   { id: "calendar",       label: "Calendar",       icon: CalendarDays },
-  { id: "friends",        label: "Friends",        icon: UserPlus     },
   { id: "opportunities",  label: "Opportunities",  icon: Compass      },
   { id: "settings",       label: "Settings",       icon: Settings     },
 ];
@@ -74,7 +66,6 @@ const EMPTY_FORM = { company: "", role: "", location: "", status: "Not Applied" 
 const PAGE_TITLES: Record<NavItem, string> = {
   "my-jobs":       "My Jobs",
   "calendar":      "Calendar",
-  "friends":       "Friends",
   "opportunities": "Opportunities",
   "settings":      "Settings",
 };
@@ -82,12 +73,11 @@ const PAGE_TITLES: Record<NavItem, string> = {
 const NAV_PATHS: Record<NavItem, string> = {
   "my-jobs":       "/myjobs",
   "calendar":      "/calendar",
-  "friends":       "/friends",
   "opportunities": "/opportunities",
   "settings":      "/settings",
 };
 
-// ─── Seed data (friends/lists only — jobs come from Supabase) ────────────────
+// (No seed data — jobs come from Supabase)
 
 
 
@@ -357,7 +347,7 @@ function LoginScreen({
         )}
 
         <p className="text-[11px] text-muted-foreground">
-          Your data is private and only shared with friends you invite.
+          Your data is private and stored securely.
         </p>
       </div>
     </div>
@@ -380,7 +370,7 @@ export default function App() {
       document.documentElement.style.setProperty('--accent-hex', savedAccent);
     }
   }, []);
-  const { user, loading, loginWithGoogle, logout, updatePrivacy, refreshUser } = useAuth();
+  const { user, loading, loginWithGoogle, logout, refreshUser } = useAuth();
   const { jobs, addJob, updateJob, deleteJob } = useJobs(user?.uid ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -389,8 +379,6 @@ export default function App() {
 
   const activeNav: NavItem = location.pathname.startsWith("/calendar")
     ? "calendar"
-    : location.pathname.startsWith("/friends")
-    ? "friends"
     : location.pathname.startsWith("/opportunities")
     ? "opportunities"
     : location.pathname.startsWith("/settings")
@@ -409,6 +397,7 @@ export default function App() {
     localStorage.setItem("stealthMode", String(isStealthMode));
   }, [isStealthMode]);
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [viewType, setViewType] = useState<"list" | "grid">("list");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
@@ -426,9 +415,6 @@ export default function App() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
 
-
-  // Sidebar quick-join
-  const [friendCode, setFriendCode] = useState("");
 
   // Settings — editable display name
   const [editingName, setEditingName] = useState(false);
@@ -658,33 +644,44 @@ export default function App() {
       <div className="relative z-10 flex size-full">
 
       {/* ── Sidebar ── */}
-      <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-card border-r border-border h-full">
-        {/* JATE logo */}
-        <div className="px-4 pt-5 pb-4 flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground text-sm font-bold leading-none">J</span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold tracking-tight text-foreground leading-tight">JATE</p>
-            <p className="text-[9px] text-muted-foreground leading-tight truncate">Job Application Tracker</p>
-          </div>
+      <aside className={`hidden md:flex flex-col shrink-0 bg-card border-r border-border h-full transition-[width] duration-300 ease-in-out ${sidebarOpen ? "w-[220px]" : "w-[68px]"}`}>
+        {/* JATE logo + collapse indent */}
+        <div className={`flex items-center pt-4 pb-3 ${sidebarOpen ? "px-4 gap-2.5" : "justify-center"}`}>
+          {sidebarOpen && (
+            <>
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                <span className="text-primary-foreground text-sm font-bold leading-none">J</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold tracking-tight text-foreground leading-tight">JATE</p>
+                <p className="text-[9px] text-muted-foreground leading-tight truncate">Job Application Tracker</p>
+              </div>
+            </>
+          )}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"} aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            className="shrink-0 flex items-center justify-center w-8 h-6 rounded-md border border-border bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out">
+            {sidebarOpen ? <PanelLeftClose className="w-3.5 h-3.5" /> : <PanelLeftOpen className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
         <div className="w-full h-px bg-border" />
 
-        <nav className="flex flex-col gap-0.5 px-3 pt-3 flex-1">
+        <nav className={`flex flex-col gap-0.5 pt-3 flex-1 ${sidebarOpen ? "px-3" : "px-2"}`}>
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => go(id)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm w-full text-left transition-colors ${
+            <button key={id} onClick={() => go(id)} title={label}
+              className={`flex items-center rounded-md text-sm w-full transition-colors ${
+                sidebarOpen ? "gap-2.5 px-3 py-2 text-left" : "justify-center py-2.5"
+              } ${
                 activeNav === id
                   ? "bg-accent text-accent-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out"
               }`}>
-              <Icon className="w-4 h-4 shrink-0" />{label}
+              <Icon className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>{label}</span>}
             </button>
           ))}
 
-          {agendaJobs.length > 0 && (
+          {sidebarOpen && agendaJobs.length > 0 && (
             <div className="mt-6 mb-2">
               <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Upcoming Agenda</h3>
               <div className="flex flex-col gap-0.5">
@@ -715,12 +712,11 @@ export default function App() {
 
         </nav>
 
-        {/* User profile + quick-join */}
-        <div className="px-4 pb-5 pt-3">
+        {/* User profile */}
+        <div className={`pb-5 pt-3 ${sidebarOpen ? "px-4" : "px-2"}`}>
           <div className="w-full h-px bg-border mb-3" />
 
-          {/* Signed-in user */}
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className={`flex items-center ${sidebarOpen ? "gap-2.5" : "flex-col gap-3 justify-center"}`}>
             {user.photoURL ? (
               <img src={user.photoURL} alt={user.displayName}
                 className="w-7 h-7 rounded-full shrink-0 object-cover" />
@@ -731,35 +727,16 @@ export default function App() {
                 </span>
               </div>
             )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground truncate leading-tight">
-                {user.displayName ?? "You"}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
-                {user.friendCode ?? ""}
-              </p>
-            </div>
+            {sidebarOpen && (
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground truncate leading-tight">
+                  {user.displayName ?? "You"}
+                </p>
+              </div>
+            )}
             <button onClick={logout} title="Sign out"
               className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
               <LogOut className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="w-full h-px bg-border mb-3" />
-
-          <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
-            <Link2 className="w-3 h-3" />Friend Code
-          </p>
-          <p className="text-[11px] text-muted-foreground mb-2.5 leading-relaxed">
-            Enter a code to view a shared list.
-          </p>
-          <div className="flex gap-1.5">
-            <input type="text" value={friendCode} onChange={(e) => setFriendCode(e.target.value)}
-              placeholder="e.g. jt-a9x2"
-              className="flex-1 min-w-0 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono" />
-            <button onClick={() => setFriendCode("")}
-              className="px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 active:scale-95 transition-all duration-200 ease-in-out shrink-0">
-              Join
             </button>
           </div>
         </div>
@@ -1015,15 +992,6 @@ export default function App() {
           </motion.div>
         )}
 
-        {/* ══════════════ FRIENDS & SHARED GROUPS ══════════════ */}
-        {activeNav === "friends" && (
-          <motion.div key="friends" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }} className="flex-1 flex flex-col h-full overflow-hidden">
-            <FriendsTab userId={user.uid} />
-          </motion.div>
-        )}
-
-
-
         {/* ══════════════ OPPORTUNITIES ══════════════ */}
         {activeNav === "opportunities" && (
           <motion.div
@@ -1084,33 +1052,13 @@ export default function App() {
                     <span className="text-sm text-muted-foreground">Email</span>
                     <span className="text-sm font-medium text-foreground">{user.email ?? "—"}</span>
                   </div>
-                  {/* Share code */}
-                  <div className="flex items-center justify-between px-5 py-4">
-                    <span className="text-sm text-muted-foreground">Your share code</span>
-                    <span className="text-sm font-medium text-foreground font-mono">
-                      {user.friendCode ?? "—"}
-                    </span>
-                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  Share your code with friends so they can view your job list.
-                </p>
               </div>
 
                             {/* Privacy Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Privacy</h2>
                 <div className="bg-card rounded-xl border border-border flex flex-col shadow-sm divide-y divide-border">
-                  <div className="p-5 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Public Profile</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Allow friends to view my personal job board.</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" checked={user?.isPublic !== false} onChange={(e) => updatePrivacy(user.uid, e.target.checked)} />
-                      <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                    </label>
-                  </div>
                   <div className="p-5 flex items-center justify-between">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">

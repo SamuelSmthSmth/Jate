@@ -6,12 +6,7 @@ export type AuthUser = {
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
-  friendCode: string | null;
-  isPublic: boolean;
 };
-
-const generateFriendCode = () =>
-  Math.random().toString(36).substring(2, 8).toUpperCase();
 
 function mapProfile(row: Record<string, unknown>): AuthUser {
   return {
@@ -19,8 +14,6 @@ function mapProfile(row: Record<string, unknown>): AuthUser {
     displayName: (row.display_name as string) ?? null,
     email: (row.email as string) ?? null,
     photoURL: (row.photo_url as string) ?? null,
-    friendCode: (row.friend_code as string) ?? null,
-    isPublic: (row.is_public as boolean) !== false,
   };
 }
 
@@ -44,8 +37,6 @@ async function loadProfile(authUser: {
     displayName: fullName,
     email,
     photoURL: avatarUrl,
-    friendCode: null,
-    isPublic: true,
   };
 
   try {
@@ -61,8 +52,6 @@ async function loadProfile(authUser: {
         display_name: fullName,
         email,
         photo_url: avatarUrl,
-        friend_code: generateFriendCode(),
-        is_public: true,
       };
       const { error } = await supabase.from("profiles").insert(profile);
       if (error) {
@@ -80,7 +69,7 @@ async function loadProfile(authUser: {
     }
 
     // Refresh email/photo if they changed, but preserve the user's edited
-    // display name and their permanent friend code.
+    // display name.
     const updates: Record<string, unknown> = {};
     if ((existing.email ?? null) !== email) updates.email = email;
     if ((existing.photo_url ?? null) !== avatarUrl) updates.photo_url = avatarUrl;
@@ -145,11 +134,5 @@ export function useAuth() {
 
   const logout = () => supabase.auth.signOut();
 
-  const updatePrivacy = async (uid: string, isPublic: boolean) => {
-    if (!uid) return;
-    await supabase.from("profiles").update({ is_public: isPublic }).eq("id", uid);
-    setUser((prev) => (prev ? { ...prev, isPublic } : prev));
-  };
-
-  return { user, loading, loginWithGoogle, logout, updatePrivacy, refreshUser };
+  return { user, loading, loginWithGoogle, logout, refreshUser };
 }
