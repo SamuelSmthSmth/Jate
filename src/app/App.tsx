@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List, LayoutDashboard, Lock,
   CalendarDays, X, Moon, Sun,
-  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, Copy, FileText, Share2,
+  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, Copy, FileText, Share2, Compass,
 } from "lucide-react";
 import Papa from "papaparse";
 import { updateProfile } from "firebase/auth";
@@ -18,12 +18,13 @@ import { useThemeSettings } from "../hooks/useThemeSettings";
 import JobCalendar from "./components/JobCalendar";
 
 import FriendsTab from "./components/FriendsTab";
+import OpportunitiesTab from "./components/OpportunitiesTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Status = "Not Applied" | "Waiting" | "Applied" | "Assessment" | "Interviewing" | "Rejected" | "Offer";
 type SalaryType = "Paid" | "Volunteer";
-type NavItem = "my-jobs" | "calendar" | "friends" | "docs" | "settings";
+type NavItem = "my-jobs" | "calendar" | "friends" | "opportunities" | "settings";
 type Filter = "All" | Status;
 type SortKey = "deadline" | "salary";
 
@@ -60,10 +61,11 @@ type Friend = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const navItems: { id: NavItem; label: string; icon: typeof Briefcase }[] = [
-  { id: "my-jobs",      label: "My Jobs",     icon: Briefcase    },
-  { id: "calendar",     label: "Calendar",     icon: CalendarDays },
-  { id: "friends",      label: "Friends",      icon: UserPlus     },
-  { id: "settings",     label: "Settings",     icon: Settings     },
+  { id: "my-jobs",        label: "My Jobs",       icon: Briefcase    },
+  { id: "calendar",       label: "Calendar",       icon: CalendarDays },
+  { id: "friends",        label: "Friends",        icon: UserPlus     },
+  { id: "opportunities",  label: "Opportunities",  icon: Compass      },
+  { id: "settings",       label: "Settings",       icon: Settings     },
 ];
 
 const FILTERS: Filter[] = ["All", "Not Applied", "Applied", "Waiting", "Assessment", "Interviewing", "Rejected", "Offer"];
@@ -71,10 +73,11 @@ const STATUSES: Status[] = ["Not Applied", "Applied", "Waiting", "Assessment", "
 const EMPTY_FORM = { company: "", role: "", location: "", status: "Not Applied" as Status, deadline: "", notes: "" };
 
 const PAGE_TITLES: Record<NavItem, string> = {
-  "my-jobs":      "My Jobs",
-  "calendar":     "Calendar",
-  "friends":      "Friends",
-  "settings":     "Settings",
+  "my-jobs":       "My Jobs",
+  "calendar":      "Calendar",
+  "friends":       "Friends",
+  "opportunities": "Opportunities",
+  "settings":      "Settings",
 };
 
 // ─── Seed data (friends/lists only — jobs come from Firestore) ────────────────
@@ -763,6 +766,11 @@ export default function App() {
                 {typedJobs.length} application{typedJobs.length !== 1 ? "s" : ""} tracked
               </p>
             )}
+        {activeNav === "opportunities" && (
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Browse Finance, Tech &amp; Law opportunities · powered by Trackr
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
 
@@ -1007,6 +1015,17 @@ export default function App() {
         )}
 
 
+
+        {/* ══════════════ OPPORTUNITIES ══════════════ */}
+        {activeNav === "opportunities" && (
+          <motion.div
+            key="opportunities"
+            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
+            className="flex-1 flex flex-col h-full overflow-hidden"
+          >
+            <OpportunitiesTab jobs={typedJobs} addJob={addJob} />
+          </motion.div>
+        )}
 
         {/* ══════════════ SETTINGS ══════════════ */}
         {activeNav === "settings" && (
