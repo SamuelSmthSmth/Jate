@@ -157,9 +157,6 @@ const JobCard = forwardRef<HTMLDivElement, {
   deleteJob?: (id: string) => Promise<void>;
   isLast?: boolean;
   readOnly?: boolean;
-  selectMode?: boolean;
-  isSelected?: boolean;
-  onToggleSelect?: () => void;
   isGridView?: boolean;
   isStealthMode?: boolean;
 }>(({

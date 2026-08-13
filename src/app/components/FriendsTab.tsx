@@ -103,7 +103,7 @@ if (viewingFriend) {
     <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
       <div className="max-w-xl flex flex-col gap-6">
         {/* Add Friend */}
-        <div className="border border-border rounded-lg p-5 bg-card">
+        <div className="border border-border rounded-xl p-5 bg-card shadow-sm">
           <p className="text-xs font-semibold text-foreground mb-3">Add a Friend</p>
           <div className="flex gap-2">
             <input type="text" value={newFriendCode}
@@ -124,15 +124,15 @@ if (viewingFriend) {
         <div>
           <SectionLabel>Connected Friends ({friends.length})</SectionLabel>
           {loading ? (
-            <div className="border border-border rounded-lg p-6 text-center">
+            <div className="border border-border rounded-xl p-6 text-center">
               <p className="text-sm text-muted-foreground">Loading friends...</p>
             </div>
           ) : friends.length === 0 ? (
-            <div className="border border-border rounded-lg p-6 text-center">
+            <div className="border border-border rounded-xl p-6 text-center">
               <p className="text-sm text-muted-foreground">No friends added yet.</p>
             </div>
           ) : (
-            <div className="border border-border rounded-lg overflow-hidden">
+            <div className="border border-border rounded-xl overflow-hidden">
               {friends.map((friend, idx) => (
                 <div key={friend.id}
                   className={`flex items-center gap-3 px-4 py-3 bg-card hover:bg-secondary transition-colors ${

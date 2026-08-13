@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate, useLocation } from "react-router";
 import {
   Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List, LayoutDashboard, Lock,
   CalendarDays, X, Moon, Sun,
-  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, FileText, Share2, Compass,
+  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, FileText, Compass,
 } from "lucide-react";
 import Papa from "papaparse";
 import { supabase } from "../supabase";
@@ -76,6 +77,14 @@ const PAGE_TITLES: Record<NavItem, string> = {
   "friends":       "Friends",
   "opportunities": "Opportunities",
   "settings":      "Settings",
+};
+
+const NAV_PATHS: Record<NavItem, string> = {
+  "my-jobs":       "/myjobs",
+  "calendar":      "/calendar",
+  "friends":       "/friends",
+  "opportunities": "/opportunities",
+  "settings":      "/settings",
 };
 
 // ─── Seed data (friends/lists only — jobs come from Supabase) ────────────────
@@ -358,6 +367,9 @@ function LoginScreen({
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   useEffect(() => {
     // Initialize theme and accent color on app load
     if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -375,7 +387,22 @@ export default function App() {
   const [dark, setDark] = useState(false);
   const { fontFamily, density, backgroundStyle, statusColors, setFontFamily, setDensity, setBackgroundStyle, setStatusColor } = useThemeSettings();
 
-  const [activeNav, setActiveNav] = useState<NavItem>("my-jobs");
+  const activeNav: NavItem = location.pathname.startsWith("/calendar")
+    ? "calendar"
+    : location.pathname.startsWith("/friends")
+    ? "friends"
+    : location.pathname.startsWith("/opportunities")
+    ? "opportunities"
+    : location.pathname.startsWith("/settings")
+    ? "settings"
+    : "my-jobs";
+
+  const go = (id: NavItem) => navigate(NAV_PATHS[id]);
+
+  // Canonical root → My Jobs
+  useEffect(() => {
+    if (location.pathname === "/") navigate("/myjobs", { replace: true });
+  }, [location.pathname, navigate]);
   const [isStealthMode, setIsStealthMode] = useState(() => localStorage.getItem("stealthMode") === "true");
 
   useEffect(() => {
@@ -390,8 +417,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const effectiveViewType = isMobile ? 'grid' : viewType;
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
 
   // My Jobs UI state
   const [filter, setFilter] = useState<Filter>("All");
@@ -633,7 +658,7 @@ export default function App() {
       <div className="relative z-10 flex size-full">
 
       {/* ── Sidebar ── */}
-      <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-secondary/30 backdrop-blur-md border-r border-border h-full">
+      <aside className="hidden md:flex flex-col w-[220px] shrink-0 bg-card border-r border-border h-full">
         {/* JATE logo */}
         <div className="px-4 pt-5 pb-4 flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
@@ -649,7 +674,7 @@ export default function App() {
 
         <nav className="flex flex-col gap-0.5 px-3 pt-3 flex-1">
           {navItems.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setActiveNav(id)}
+            <button key={id} onClick={() => go(id)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm w-full text-left transition-colors ${
                 activeNav === id
                   ? "bg-accent text-accent-foreground font-medium"
@@ -667,7 +692,7 @@ export default function App() {
                   <button 
                     key={j.id} 
                     onClick={() => {
-                      setActiveNav('my-jobs');
+                      go('my-jobs');
                       setFilter('All');
                       // We could theoretically scroll to it, but just setting view is a good start
                     }}
@@ -746,7 +771,7 @@ export default function App() {
         {/* Header */}
         <div className="flex items-center justify-between px-6 md:px-8 pt-6 pb-4">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
               {PAGE_TITLES[activeNav]}
             </h1>
 
@@ -764,12 +789,6 @@ export default function App() {
           <div className="flex items-center gap-2">
 
         {activeNav === "my-jobs" && (
-              <button onClick={() => { setSelectMode(!selectMode); setSelectedJobs(new Set()); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-opacity border ${selectMode ? 'bg-accent text-accent-foreground border-accent' : 'bg-transparent text-foreground border-border hover:bg-muted'}`}>
-                {selectMode ? 'Cancel' : 'Select'}
-              </button>
-            )}
-
-        {activeNav === "my-jobs" && (
               <Dialog.Root open={showAdd} onOpenChange={setShowAdd}>
                 <Dialog.Trigger asChild>
                   <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
@@ -779,7 +798,7 @@ export default function App() {
                 <Dialog.Portal>
                   <Dialog.Overlay className="fixed inset-0 bg-black/25 backdrop-blur-[1px] z-40" />
                   <Dialog.Content
-                    className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card/30 backdrop-blur-md rounded-xl border border-border shadow-xl p-6 focus:outline-none"
+                    className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-card rounded-2xl border border-border shadow-xl p-6 focus:outline-none"
                     >
                     <div className="flex items-center justify-between mb-5">
                       <Dialog.Title className="text-base font-semibold text-foreground">Add Application</Dialog.Title>
@@ -1028,7 +1047,7 @@ export default function App() {
               {/* Profile Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Profile Settings</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card/30 backdrop-blur-md shadow-sm">
+                <div className="border border-border rounded-xl divide-y divide-border overflow-hidden bg-card shadow-sm">
                   {/* Display name */}
                   <div className="flex items-center justify-between px-5 py-4 gap-3">
                     <span className="text-sm text-muted-foreground shrink-0">Display name</span>
@@ -1081,7 +1100,7 @@ export default function App() {
                             {/* Privacy Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Privacy</h2>
-                <div className="bg-card/30 backdrop-blur-md rounded-lg border border-border flex flex-col shadow-sm divide-y divide-border">
+                <div className="bg-card rounded-xl border border-border flex flex-col shadow-sm divide-y divide-border">
                   <div className="p-5 flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-medium text-foreground">Public Profile</h3>
@@ -1113,7 +1132,7 @@ export default function App() {
               {/* Appearance Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Appearance</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card/30 backdrop-blur-md shadow-sm">
+                <div className="border border-border rounded-xl divide-y divide-border overflow-hidden bg-card shadow-sm">
                   {/* Dark Mode */}
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
@@ -1175,7 +1194,7 @@ export default function App() {
               {/* Aesthetics Engine Section */}
               <div>
                 <h2 className="text-xl font-semibold mb-6 text-foreground">Aesthetics Engine</h2>
-                <div className="border border-border rounded-lg divide-y divide-border overflow-hidden bg-card/30 backdrop-blur-md shadow-sm">
+                <div className="border border-border rounded-xl divide-y divide-border overflow-hidden bg-card shadow-sm">
                   {/* Typography */}
                   <div className="flex items-center justify-between px-5 py-4 gap-4">
                     <div>
@@ -1275,16 +1294,6 @@ export default function App() {
         )}
         </AnimatePresence>
 
-        {/* Bulk Share FAB */}
-        {activeNav === "my-jobs" && selectMode && selectedJobs.size > 0 && (
-          <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-40">
-            <button onClick={handleBulkShare} className="flex items-center gap-2 px-6 py-3 rounded-full bg-accent text-accent-foreground shadow-lg hover:opacity-90 transition-opacity font-medium">
-              <Share2 className="w-4 h-4" />
-              Share {selectedJobs.size} Selected {selectedJobs.size === 1 ? 'Job' : 'Jobs'}
-            </button>
-          </div>
-        )}
-
       </main>
       {/* Bottom Navigation (Mobile) */}
       <div className="md:hidden fixed bottom-0 left-0 w-full z-50 bg-background dark:bg-zinc-900 border-t border-border flex justify-around items-center h-16 px-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
@@ -1294,7 +1303,7 @@ export default function App() {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => go(item.id)}
               className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
                 isActive ? "text-accent" : "text-muted-foreground hover:text-foreground"
               }`}
