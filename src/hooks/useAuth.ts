@@ -138,7 +138,10 @@ export function useAuth() {
   }, [refreshUser]);
 
   const loginWithGoogle = () =>
-    supabase.auth.signInWithOAuth({ provider: "google" });
+    supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
 
   const logout = () => supabase.auth.signOut();
 
