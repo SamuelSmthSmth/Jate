@@ -55,6 +55,8 @@ const NAV_PATHS: Record<NavItem, string> = {
   "settings":      "/settings",
 };
 
+const INTRO_DURATION_MS = 2400;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseSalary(s?: string | null) {
@@ -154,15 +156,35 @@ export default function App() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+
+  // ── Intro animation on sign-in (plays fully; skipped on plain refresh) ─────
+
+  useEffect(() => {
+    if (loading) return;
+    if (user && sessionStorage.getItem("jate-intro") === "1") {
+      sessionStorage.removeItem("jate-intro");
+      setShowIntro(true);
+      const t = window.setTimeout(() => setShowIntro(false), INTRO_DURATION_MS);
+      return () => window.clearTimeout(t);
+    }
+  }, [loading, user]);
 
   // ── Auth gates ──────────────────────────────────────────────────────────────
 
-  if (loading) return <LoadingScreen />;
+  if (loading) return (
+    <div className="size-full flex items-center justify-center bg-background">
+      <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-sm">
+        <span className="text-primary-foreground text-xl font-bold leading-none">J</span>
+      </div>
+    </div>
+  );
+  if (showIntro) return <LoadingScreen />;
   if (!user) return (
     <LoginScreen
-      onGoogleLogin={() => loginWithGoogle()}
-      onEmailLogin={loginWithEmail}
-      onEmailRegister={registerWithEmail}
+      onGoogleLogin={() => { sessionStorage.setItem("jate-intro", "1"); return loginWithGoogle(); }}
+      onEmailLogin={async (email, password) => { sessionStorage.setItem("jate-intro", "1"); await loginWithEmail(email, password); }}
+      onEmailRegister={async (email, password) => { sessionStorage.setItem("jate-intro", "1"); await registerWithEmail(email, password); }}
     />
   );
 

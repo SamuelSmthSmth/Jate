@@ -2,14 +2,16 @@ import { useMemo, type ReactNode } from "react";
 import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay, startOfDay, isSameDay } from "date-fns";
 import { enUS } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Clock, Mic, CalendarClock, Briefcase } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Mic, CalendarClock, Briefcase, Download } from "lucide-react";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../../styles/calendar.css";
+import { downloadICS } from "../../lib/ics";
+import { Job } from "../types";
 
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { "en-US": enUS } });
 
 type JobCalendarProps = {
-  jobs: any[];
+  jobs: Job[];
 };
 
 const MESSAGES = {
@@ -172,10 +174,17 @@ export default function JobCalendar({ jobs }: JobCalendarProps) {
 
   return (
     <div className="flex flex-col h-full gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
-        <Stat label="Upcoming interviews" value={upcomingInterviews} tone="blue" icon={<Mic className="w-4 h-4" />} />
-        <Stat label="Upcoming deadlines" value={upcomingDeadlines} tone="red" icon={<CalendarClock className="w-4 h-4" />} />
-        <Stat label="Applications tracked" value={jobs.length} tone="neutral" icon={<Briefcase className="w-4 h-4" />} />
+      <div className="flex items-start justify-between gap-3 shrink-0 flex-wrap">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-w-[260px]">
+          <Stat label="Upcoming interviews" value={upcomingInterviews} tone="blue" icon={<Mic className="w-4 h-4" />} />
+          <Stat label="Upcoming deadlines" value={upcomingDeadlines} tone="red" icon={<CalendarClock className="w-4 h-4" />} />
+          <Stat label="Applications tracked" value={jobs.length} tone="neutral" icon={<Briefcase className="w-4 h-4" />} />
+        </div>
+        <button onClick={() => downloadICS(jobs)}
+          title="Download an .ics file to sync with Google Calendar, Outlook, etc."
+          className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out font-mono shrink-0">
+          <Download className="w-3.5 h-3.5" />Export .ics
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
