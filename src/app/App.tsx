@@ -61,6 +61,12 @@ function parseSalary(s?: string | null) {
   return s ? parseInt(s.replace(/\D/g, ""), 10) || 0 : 0;
 }
 
+function daysFromNow(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 function exportCSV(jobs: Job[]) {
   const headers = ["Company", "Title", "Status", "Paid", "Salary", "Deadline", "Interview", "URL", "Notes"];
   const esc = (s: any) => `"${String(s ?? "").replace(/"/g, '""')}"`;
@@ -106,7 +112,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [dark, setDark] = useState(false);
-  const { fontFamily, backgroundStyle, statusColors, setFontFamily, setBackgroundStyle, setStatusColor } = useThemeSettings();
+  const { fontFamily, density, backgroundStyle, statusColors, setFontFamily, setDensity, setBackgroundStyle, setStatusColor } = useThemeSettings();
 
   const activeNav: NavItem = location.pathname.startsWith("/calendar")
     ? "calendar"
@@ -211,10 +217,10 @@ export default function App() {
 
   async function seedDemoData() {
     const demoJobs = [
-      { company: "Stripe", role: "Product Designer", location: "Remote", status: "Applied", deadline: "2026-07-30", appliedDate: "2026-06-10", postingUrl: "stripe.com/jobs/product-designer-2026", portalUrl: "jobs.lever.co/stripe/apply/pd", salary: "110000", salaryType: "Paid", notes: "Found via LinkedIn. Strong interest in payments UX." },
-      { company: "Airbnb", role: "Data Analyst", location: "San Francisco, CA", status: "Rejected", deadline: "2026-06-20", appliedDate: "2026-05-15" },
-      { company: "Linear", role: "Growth Engineer", location: "Remote", status: "Waiting", deadline: "2026-08-01", appliedDate: "2026-06-18" },
-      { company: "Notion", role: "Product Manager", location: "New York, NY", status: "Interviewing", deadline: "2026-07-22", appliedDate: "2026-06-05" }
+      { company: "Stripe", role: "Product Designer", location: "Remote", status: "Applied", deadline: daysFromNow(18), appliedDate: daysFromNow(-14), postingUrl: "stripe.com/jobs/product-designer-2026", portalUrl: "jobs.lever.co/stripe/apply/pd", salary: "110000", salaryType: "Paid", notes: "Found via LinkedIn. Strong interest in payments UX." },
+      { company: "Airbnb", role: "Data Analyst", location: "San Francisco, CA", status: "Rejected", deadline: daysFromNow(30), appliedDate: daysFromNow(-21) },
+      { company: "Linear", role: "Growth Engineer", location: "Remote", status: "Waiting", deadline: daysFromNow(9), appliedDate: daysFromNow(-6) },
+      { company: "Notion", role: "Product Manager", location: "New York, NY", status: "Interviewing", deadline: daysFromNow(21), appliedDate: daysFromNow(-28), interviewDate: daysFromNow(4) }
     ];
     for (const j of demoJobs) {
       await addJob(j);
@@ -557,6 +563,7 @@ export default function App() {
                         isLast={effectiveViewType === 'grid' ? true : (idx === filtered.length - 1)}
                         isGridView={effectiveViewType === 'grid'}
                         isStealthMode={isStealthMode}
+                        isMobile={isMobile}
                       />
                     ))}
                     </AnimatePresence>
@@ -606,6 +613,8 @@ export default function App() {
             logout={logout}
             fontFamily={fontFamily}
             setFontFamily={setFontFamily}
+            density={density}
+            setDensity={setDensity}
             backgroundStyle={backgroundStyle}
             setBackgroundStyle={setBackgroundStyle}
             statusColors={statusColors}

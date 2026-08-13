@@ -85,6 +85,19 @@ function IndustryTab({
   );
 }
 
+function ProgrammeSkeleton() {
+  return (
+    <div className="flex items-center gap-3 px-3 py-3 border-b border-border/50">
+      <div className="w-8 h-8 rounded-lg bg-muted/80 animate-pulse shrink-0" />
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className="h-3 w-2/3 rounded bg-muted/80 animate-pulse" />
+        <div className="h-2.5 w-1/2 rounded bg-muted/80 animate-pulse" />
+      </div>
+      <div className="w-14 h-6 rounded-md bg-muted/80 animate-pulse shrink-0" />
+    </div>
+  );
+}
+
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
 
 export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps) {
@@ -273,7 +286,13 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
           mobileShowDetail ? "hidden md:flex" : "flex"
         } w-full md:w-[340px] lg:w-[380px] shrink-0`} style={{ scrollbarWidth: "none" }}>
           <AnimatePresence mode="popLayout">
-            {filtered.length === 0 && !loading ? (
+            {loading && filtered.length === 0 ? (
+              <div className="flex flex-col blur-[1px]">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <ProgrammeSkeleton key={i} />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
               <motion.div
                 key="empty"
                 initial={{ opacity: 0 }}

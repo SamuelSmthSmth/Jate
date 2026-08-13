@@ -137,6 +137,7 @@ const JobCard = forwardRef<HTMLDivElement, {
   readOnly?: boolean;
   isGridView?: boolean;
   isStealthMode?: boolean;
+  isMobile?: boolean;
 }>(({
   job,
   updateJob,
@@ -145,6 +146,7 @@ const JobCard = forwardRef<HTMLDivElement, {
   readOnly = false,
   isGridView = false,
   isStealthMode = false,
+  isMobile = false,
 }, ref) => {
   const { density, statusColors } = useThemeSettings();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -287,6 +289,20 @@ const JobCard = forwardRef<HTMLDivElement, {
   const roleStr = job.role || "No Role";
   const deadlineStr = job.deadline;
 
+  const statusBadge = (
+    <span
+      className="text-[11px] px-2 py-0.5 rounded-md font-medium border shrink-0"
+      style={{
+        fontFamily: "'Geist Mono', monospace",
+        backgroundColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.15)`,
+        color: `rgb(${hexToRgb(statusColors[displayStatus])})`,
+        borderColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.3)`
+      }}
+    >
+      {displayStatus}
+    </span>
+  );
+
   return (
     <motion.div
       ref={ref}
@@ -314,20 +330,19 @@ const JobCard = forwardRef<HTMLDivElement, {
         <div
           onClick={handleExpand}
           ref={cardRef}
-          className={`flex flex-col transition-colors cursor-pointer rounded-xl border border-border p-5 relative group ${
+          className={`group flex flex-col transition-colors cursor-pointer rounded-xl border border-border p-4 relative ${
             isExpanded ? "bg-[#fcfcfc] dark:bg-accent/10 rounded-b-none border-b-0" : "bg-card hover:bg-secondary/40"
           }`}
         >
-          {/* Top: Avatar and Titles */}
-          <div className="absolute top-3 right-3">{ShareMenu}</div>
-          <div className="flex items-start gap-3 mb-4 pr-6">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 mt-0.5 overflow-hidden ${getAvatarColor(companyStr)}`}>
+          {/* Top: avatar + titles + status */}
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0 overflow-hidden ${getAvatarColor(companyStr)}`}>
               {(() => {
                 const domain = getDomain(job.url || job.postingUrl || job.portalUrl);
                 if (domain && !logoError) {
                   return (
-                    <img 
-                      src={`https://logo.clearbit.com/${domain}`} 
+                    <img
+                      src={`https://logo.clearbit.com/${domain}`}
                       alt={companyStr}
                       onError={() => setLogoError(true)}
                       className="w-full h-full object-cover"
@@ -338,13 +353,14 @@ const JobCard = forwardRef<HTMLDivElement, {
               })()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold text-foreground truncate">{companyStr}</p>
-              <p className="text-[13px] text-muted-foreground truncate mt-0.5">{roleStr}</p>
+              <p className="text-sm font-semibold text-foreground truncate leading-tight">{companyStr}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{roleStr}</p>
             </div>
+            {!isMobile && statusBadge}
           </div>
 
-          {/* Middle: Dates and Location */}
-          <div className="flex flex-col gap-2 flex-1 mb-5">
+          {/* Meta */}
+          <div className="mt-3 flex flex-col gap-1.5">
             {job.location && (
               <span tabIndex={0} className={`flex items-center gap-2 text-[11px] text-muted-foreground w-fit rounded reveal-on-interaction ${isStealthMode ? 'blur-sm bg-zinc-200 dark:bg-zinc-800' : 'blur-0 bg-transparent'}`}
                 style={{ fontFamily: "'Geist Mono', monospace" }}>
@@ -365,26 +381,20 @@ const JobCard = forwardRef<HTMLDivElement, {
             )}
           </div>
 
-          {/* Bottom Right: Status Badge */}
-          <div className="flex items-center justify-between mt-auto">
-            {ShareMenu}
-            <div className="text-muted-foreground/50 w-4 h-4 flex items-center justify-center group-hover:opacity-100 opacity-50">
-              {isExpanded
-                ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                : <ChevronDown className="w-4 h-4 opacity-0 transition-opacity" />}
+          {/* Footer / mobile badge */}
+          {isMobile ? (
+            <div className="flex items-center justify-end mt-3">
+              {statusBadge}
             </div>
-            <span
-              className={`text-[11px] px-2.5 py-1 rounded-md font-medium border`}
-              style={{ 
-                fontFamily: "'Geist Mono', monospace", 
-                backgroundColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.15)`,
-                color: `rgb(${hexToRgb(statusColors[displayStatus])})`,
-                borderColor: `rgba(${hexToRgb(statusColors[displayStatus])}, 0.3)`
-              }}
-            >
-              {displayStatus}
-            </span>
-          </div>
+          ) : (
+            <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between">
+              {ShareMenu}
+              <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">
+                {isExpanded ? "Collapse" : "Details"}
+                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div
@@ -472,7 +482,7 @@ const JobCard = forwardRef<HTMLDivElement, {
             exit={{ height: 0, opacity: 0 }}
             style={{ overflow: "hidden" }}
           >
-            <div tabIndex={0} className={`group/accordion focus:outline-none ${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b -mt-1 bg-[#fcfcfc] dark:bg-accent/10" : "bg-[#fcfcfc] dark:bg-muted/10"} border-t border-border`}>
+            <div tabIndex={0} className={`group/accordion focus:outline-none ${density === "compact" ? "px-3 pb-4 pt-2" : "px-5 pb-6 pt-4"} ${isGridView ? "rounded-b-xl border-x border-b bg-[#fcfcfc] dark:bg-accent/10" : "bg-[#fcfcfc] dark:bg-muted/10"} border-t border-border`}>
               <div className={`${isGridView ? "" : (density === "compact" ? "ml-[44px]" : "ml-[56px]")} gap-4 flex flex-col`}>
 
                 {/* Status */}

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Lock, Moon, Sun, LogOut, Check, X, Pencil } from "lucide-react";
 import { getBgClass, BACKGROUND_OPTIONS } from "../../lib/backgrounds";
 import { Status, STATUSES } from "../types";
-import { FontFamily, BackgroundStyle } from "../../hooks/useThemeSettings";
+import { FontFamily, BackgroundStyle, Density } from "../../hooks/useThemeSettings";
 
 type SettingsViewProps = {
   user: { displayName: string | null; email: string | null };
@@ -19,6 +19,8 @@ type SettingsViewProps = {
   logout: () => void;
   fontFamily: FontFamily;
   setFontFamily: (f: FontFamily) => void;
+  density: Density;
+  setDensity: (d: Density) => void;
   backgroundStyle: BackgroundStyle;
   setBackgroundStyle: (s: BackgroundStyle) => void;
   statusColors: Record<Status, string>;
@@ -40,6 +42,8 @@ export default function SettingsView({
   logout,
   fontFamily,
   setFontFamily,
+  density,
+  setDensity,
   backgroundStyle,
   setBackgroundStyle,
   statusColors,
@@ -203,6 +207,23 @@ export default function SettingsView({
                 <option value="cinzel">Cinzel</option>
                 <option value="lobster">Lobster</option>
               </select>
+            </div>
+            {/* Density */}
+            <div className="flex items-center justify-between px-5 py-4 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-foreground">Density</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Compact or comfortable spacing</p>
+              </div>
+              <div className="flex p-0.5 bg-muted rounded-lg border border-border shrink-0">
+                {(["comfortable", "compact"] as Density[]).map((d) => (
+                  <button key={d} onClick={() => setDensity(d)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      density === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    }`}>
+                    {d === "comfortable" ? "Comfortable" : "Compact"}
+                  </button>
+                ))}
+              </div>
             </div>
             {/* Background Style */}
             <div className="flex flex-col gap-4 px-5 py-4">
