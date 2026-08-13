@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router";
 import {
-  Briefcase, Settings, LayoutGrid, List,
+  Briefcase, Settings, LayoutGrid, List, Kanban,
   CalendarDays, Moon, Sun, Home,
   ArrowUpDown, Download, Upload, LogOut, Compass,
   PanelLeftClose, PanelLeftOpen,
@@ -12,17 +12,30 @@ import { supabase } from "../supabase";
 import { useAuth } from "../hooks/useAuth";
 import { useJobs } from "../hooks/useJobs";
 import { loginWithEmail, registerWithEmail } from "../hooks/useEmailAuth";
-import JobCard from "./components/JobCard";
 import { useThemeSettings } from "../hooks/useThemeSettings";
-import JobCalendar from "./components/JobCalendar";
 import LoadingScreen from "./components/LoadingScreen";
 import LoginScreen from "./components/LoginScreen";
 import AddJobDialog, { AddJobForm } from "./components/AddJobDialog";
-import SettingsView from "./components/SettingsView";
-import OpportunitiesTab from "./components/OpportunitiesTab";
 import HomeView from "./components/HomeView";
+import DuplicateDialog from "./components/DuplicateDialog";
 import { getBgClass } from "../lib/backgrounds";
 import { Status, Job } from "./types";
+
+// ─── Lazy-loaded pages (code-split to shrink the initial bundle) ──────────────
+
+const JobCard = lazy(() => import("./components/JobCard"));
+const JobCalendar = lazy(() => import("./components/JobCalendar"));
+const SettingsView = lazy(() => import("./components/SettingsView"));
+const OpportunitiesTab = lazy(() => import("./components/OpportunitiesTab"));
+const KanbanBoard = lazy(() => import("./components/KanbanBoard"));
+
+function PageLoader() {
+  return (
+    <div className="w-full h-48 flex items-center justify-center">
+      <div className="w-6 h-6 rounded-full border-2 border-foreground/20 border-t-foreground animate-spin" />
+    </div>
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -157,7 +170,7 @@ export default function App() {
   }, [isStealthMode]);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [viewType, setViewType] = useState<"list" | "grid">("list");
+  const [viewType, setViewType] = useState<"list" | "grid" | "kanban">("list");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -172,6 +185,8 @@ export default function App() {
   const [form, setForm] = useState<AddJobForm>(EMPTY_FORM);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [pendingDuplicates, setPendingDuplicates] = useState<Job[]>([]);
+  const [showDuplicate, setShowDuplicate] = useState(false);
 
   // Settings — editable display name
   const [editingName, setEditingName] = useState(false);
@@ -211,9 +226,8 @@ export default function App() {
 
   // ── Job handlers ────────────────────────────────────────────────────────────
 
-  async function handleAddJob() {
-    if (!form.company.trim() || !form.role.trim()) return;
-    await addJob({
+  function buildAddPayload(): Record<string, unknown> {
+    return {
       company: form.company.trim(),
       role: form.role.trim(),
       location: form.location.trim() || "Remote",
@@ -221,9 +235,35 @@ export default function App() {
       deadline: form.deadline || new Date().toISOString().slice(0, 10),
       notes: form.notes.trim() || null,
       appliedDate: new Date().toISOString().slice(0, 10),
-    });
+    };
+  }
+
+  async function performAdd() {
+    await addJob(buildAddPayload());
     setForm(EMPTY_FORM);
     setShowAdd(false);
+    setShowDuplicate(false);
+    setPendingDuplicates([]);
+  }
+
+  function handleAddJob() {
+    if (!form.company.trim() || !form.role.trim()) return;
+    const company = form.company.trim().toLowerCase();
+    const role = form.role.trim().toLowerCase();
+    const dups = (jobs as Job[]).filter(
+      (j) => j.company.trim().toLowerCase() === company && j.role.trim().toLowerCase() === role
+    );
+    if (dups.length > 0) {
+      setPendingDuplicates(dups);
+      setShowDuplicate(true);
+      return;
+    }
+    void performAdd();
+  }
+
+  async function handleReplaceDuplicate() {
+    await Promise.all(pendingDuplicates.map((d) => deleteJob(d.id)));
+    await performAdd();
   }
 
   async function handleImportCSV(e: React.ChangeEvent<HTMLInputElement>) {
@@ -487,6 +527,14 @@ export default function App() {
               <AddJobDialog open={showAdd} onOpenChange={setShowAdd} form={form} setForm={setForm} onAdd={handleAddJob} />
             )}
 
+            <DuplicateDialog
+              open={showDuplicate}
+              onOpenChange={setShowDuplicate}
+              duplicates={pendingDuplicates}
+              onAddAnyway={() => void performAdd()}
+              onReplace={handleReplaceDuplicate}
+            />
+
             {activeNav === "my-jobs" && (
               <div className="hidden md:flex items-center bg-muted/50 rounded-lg p-0.5 border border-border shrink-0">
                 <button onClick={() => setViewType('list')} className={`p-1.5 rounded-md transition-colors ${viewType === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
@@ -494,6 +542,9 @@ export default function App() {
                 </button>
                 <button onClick={() => setViewType('grid')} className={`p-1.5 rounded-md transition-colors ${viewType === 'grid' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                   <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button onClick={() => setViewType('kanban')} title="Kanban" className={`p-1.5 rounded-md transition-colors ${viewType === 'kanban' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <Kanban className="w-4 h-4" />
                 </button>
               </div>
             )}
@@ -531,7 +582,8 @@ export default function App() {
             initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
             className="flex-1 flex flex-col h-full overflow-hidden"
           >
-            {/* Filter + Sort row */}
+            {/* Filter + Sort row (list/grid only) */}
+            {effectiveViewType !== "kanban" && (
             <div className="px-6 md:px-8 pb-4 flex items-center gap-2 flex-wrap">
               <div className="flex gap-1 flex-wrap flex-1 min-w-0">
                 {FILTERS.map((f) => (
@@ -579,52 +631,76 @@ export default function App() {
                 <input type="file" accept=".csv" ref={fileInputRef} onChange={handleImportCSV} className="hidden" />
               </div>
             </div>
+            )}
 
-            {/* Job list */}
-            <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
-              {filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-center">
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <Briefcase className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">No jobs found</p>
-                  <p className="text-xs text-muted-foreground mt-1 mb-4">
-                    {filter === "All" ? 'Add your first application with "+ Add Job"' : `No ${filter} applications yet`}
-                  </p>
-                  {filter === "All" && (
+            {/* Job list / board */}
+            {effectiveViewType === "kanban" ? (
+              <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 md:px-8 pb-4" style={{ scrollbarWidth: "thin" }}>
+                {typedJobs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                      <Briefcase className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">No jobs yet</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4">Add your first application to start your pipeline</p>
                     <button onClick={seedDemoData} className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out border border-border">
                       Load Demo Data
                     </button>
-                  )}
-                </div>
-              ) : (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={viewType}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.08 }}
-                    className={effectiveViewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}
-                  >
-                    <AnimatePresence mode="popLayout">
-                    {filtered.map((job, idx) => (
-                      <JobCard
-                        key={job.id}
-                        job={job}
-                        updateJob={updateJob}
-                        deleteJob={deleteJob}
-                        isLast={effectiveViewType === 'grid' ? true : (idx === filtered.length - 1)}
-                        isGridView={effectiveViewType === 'grid'}
-                        isStealthMode={isStealthMode}
-                        isMobile={isMobile}
-                      />
-                    ))}
-                    </AnimatePresence>
-                  </motion.div>
-                </AnimatePresence>
-              )}
-            </div>
+                  </div>
+                ) : (
+                  <Suspense fallback={<PageLoader />}>
+                    <KanbanBoard jobs={typedJobs} updateJob={updateJob} deleteJob={deleteJob} />
+                  </Suspense>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8" style={{ scrollbarWidth: "none" }}>
+                {filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                      <Briefcase className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">No jobs found</p>
+                    <p className="text-xs text-muted-foreground mt-1 mb-4">
+                      {filter === "All" ? 'Add your first application with "+ Add Job"' : `No ${filter} applications yet`}
+                    </p>
+                    {filter === "All" && (
+                      <button onClick={seedDemoData} className="px-4 py-2 rounded-md bg-secondary text-secondary-foreground text-xs font-medium hover:bg-muted active:scale-95 transition-all duration-200 ease-in-out border border-border">
+                        Load Demo Data
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <Suspense fallback={<PageLoader />}>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={viewType}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={{ duration: 0.08 }}
+                      className={effectiveViewType === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-12 items-start" : "job-list border border-border rounded-lg overflow-hidden"}
+                    >
+                      <AnimatePresence mode="popLayout">
+                      {filtered.map((job, idx) => (
+                        <JobCard
+                          key={job.id}
+                          job={job}
+                          updateJob={updateJob}
+                          deleteJob={deleteJob}
+                          isLast={effectiveViewType === 'grid' ? true : (idx === filtered.length - 1)}
+                          isGridView={effectiveViewType === 'grid'}
+                          isStealthMode={isStealthMode}
+                          isMobile={isMobile}
+                        />
+                      ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  </AnimatePresence>
+                  </Suspense>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -635,7 +711,9 @@ export default function App() {
             initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
             className="flex-1 overflow-hidden px-6 md:px-8 pb-8 pt-2"
           >
-            <JobCalendar jobs={typedJobs} />
+            <Suspense fallback={<PageLoader />}>
+              <JobCalendar jobs={typedJobs} />
+            </Suspense>
           </motion.div>
         )}
 
@@ -646,12 +724,15 @@ export default function App() {
             initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.15 }}
             className="flex-1 flex flex-col h-full overflow-hidden"
           >
-            <OpportunitiesTab jobs={typedJobs} addJob={addJob} />
+            <Suspense fallback={<PageLoader />}>
+              <OpportunitiesTab jobs={typedJobs} addJob={addJob} />
+            </Suspense>
           </motion.div>
         )}
 
         {/* ══════════════ SETTINGS ══════════════ */}
         {activeNav === "settings" && (
+          <Suspense fallback={<PageLoader />}>
           <SettingsView
             user={user}
             dark={dark}
@@ -674,6 +755,7 @@ export default function App() {
             statusColors={statusColors}
             setStatusColor={setStatusColor}
           />
+          </Suspense>
         )}
         </AnimatePresence>
 
