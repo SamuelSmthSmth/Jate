@@ -1,8 +1,10 @@
 // ─── Trackr API Utilities ─────────────────────────────────────────────────────
 // All Trackr-related constants, cache helpers, and the programme→job mapper.
 // API endpoint: https://api.the-trackr.com/programmes
-// Rate limit: 1000/day (main) + 10/day secondary (per IP, unauthenticated)
-// Strategy: cache each (region, industry, type, season) combo for 24h.
+// Rate limit: 1000/day (main) + 10/day secondary (per IP, unauthenticated).
+// Because every user sees the same pool of opportunities, results are cached in
+// Supabase (table `trackr_cache`) with a 24h TTL — one visitor refreshes it for
+// everyone, instead of each browser hitting the API from its own IP.
 
 export const TRACKR_BASE_URL = "https://api.the-trackr.com/programmes";
 export const TRACKR_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -40,6 +42,14 @@ export const TRACKR_INDUSTRY_TYPES: Record<TrackrIndustry, TrackrType[]> = {
   Finance: ["summer-internships", "spring-weeks", "off-cycle-internships", "industrial-placements"],
   Tech:    ["summer-internships", "off-cycle-internships", "industrial-placements"],
   Law:     ["vacation-schemes", "summer-internships"],
+};
+
+/** The API `industry` param value per tab. `Law` is unconfirmed — if the Law tab
+ *  returns nothing, change it to "Legal". */
+export const INDUSTRY_API_VALUES: Record<TrackrIndustry, string> = {
+  Finance: "Finance",
+  Tech: "Tech",
+  Law: "Law",
 };
 
 // ─── Programme Shape (from API) ───────────────────────────────────────────────
@@ -87,52 +97,23 @@ export type TrackrProgramme = {
   status?: unknown;
 };
 
-// ─── Cache Helpers ────────────────────────────────────────────────────────────
+// ─── Shared Cache Helpers ─────────────────────────────────────────────────────
+// The cache lives in Supabase (table `trackr_cache`), keyed by combo, so every
+// user reads the same opportunity pool.
 
-type CacheEntry = {
-  data: TrackrProgramme[];
-  timestamp: number;
-};
-
-function cacheKey(region: string, industry: string, type: string, season: string): string {
-  return `trackr_cache_${region}_${industry}_${type}_${season}`;
-}
-
-export function getCached(
+export function trackrCacheKey(
   region: string,
   industry: string,
   type: string,
   season: string
-): { data: TrackrProgramme[]; ageMs: number } | null {
-  try {
-    const raw = localStorage.getItem(cacheKey(region, industry, type, season));
-    if (!raw) return null;
-    const entry: CacheEntry = JSON.parse(raw);
-    const ageMs = Date.now() - entry.timestamp;
-    if (ageMs > TRACKR_CACHE_TTL_MS) return null; // expired
-    return { data: entry.data, ageMs };
-  } catch {
-    return null;
-  }
+): string {
+  return `${region}|${industry}|${type}|${season}`;
 }
 
-export function setCached(
-  region: string,
-  industry: string,
-  type: string,
-  season: string,
-  data: TrackrProgramme[]
-): void {
-  try {
-    const entry: CacheEntry = { data, timestamp: Date.now() };
-    localStorage.setItem(cacheKey(region, industry, type, season), JSON.stringify(entry));
-  } catch {
-    // localStorage quota exceeded — fail silently
-  }
-}
-
-export function clearCached(region: string, industry: string, type: string, season: string): void {
-  localStorage.removeItem(cacheKey(region, industry, type, season));
+export function isCacheFresh(fetchedAt: string | null | undefined): boolean {
+  if (!fetchedAt) return false;
+  const t = new Date(fetchedAt).getTime();
+  return !isNaN(t) && Date.now() - t < TRACKR_CACHE_TTL_MS;
 }
 
 /** Returns age in human-readable form, e.g. "2 hours ago" */
@@ -153,7 +134,12 @@ export function buildTrackrUrl(
   type: TrackrType,
   season: TrackrSeason
 ): string {
-  const params = new URLSearchParams({ region, industry, season, type });
+  const params = new URLSearchParams({
+    region,
+    industry: INDUSTRY_API_VALUES[industry] ?? industry,
+    season,
+    type,
+  });
   return `${TRACKR_BASE_URL}?${params.toString()}`;
 }
 

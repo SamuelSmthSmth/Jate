@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  RefreshCw, Search, X, AlertTriangle, Clock, Loader2, Eye, EyeOff,
+  RefreshCw, Search, X, Clock, Loader2, Eye, EyeOff,
 } from "lucide-react";
 import {
   TrackrIndustry, TrackrProgramme, TrackrType,
   TRACKR_INDUSTRIES, TRACKR_INDUSTRY_TYPES, TRACKR_SEASONS,
-  TrackrSeason, programmeToJob, formatCacheAge, getCached,
+  TrackrSeason, programmeToJob,
 } from "../../lib/trackr";
 import { useTrackrIndustry } from "../../hooks/useTrackr";
 import ProgrammeCard, { TypeFilterPills } from "./ProgrammeCard";
@@ -85,37 +85,6 @@ function IndustryTab({
   );
 }
 
-// ─── Rate Limit Warning ───────────────────────────────────────────────────────
-
-function RateLimitBanner({
-  callsRemaining,
-  errors,
-}: {
-  callsRemaining: number;
-  errors: string[];
-}) {
-  if (errors.length === 0 && callsRemaining > 2) return null;
-
-  return (
-    <div className={`flex items-start gap-2 mx-5 mt-3 px-3 py-2.5 rounded-lg text-xs ${
-      callsRemaining <= 0 || errors.length > 0
-        ? "bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800/40 dark:text-red-400"
-        : "bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-900/10 dark:border-amber-800/30 dark:text-amber-400"
-    }`}>
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-      <div className="flex flex-col gap-0.5">
-        {errors.map((e, i) => <p key={i}>{e}</p>)}
-        {callsRemaining <= 2 && callsRemaining > 0 && (
-          <p>API budget low: {callsRemaining} call{callsRemaining !== 1 ? "s" : ""} remaining today. Cached data is used where available.</p>
-        )}
-        {callsRemaining <= 0 && errors.length === 0 && (
-          <p>Daily API limit reached. Showing cached data. Refreshes at midnight.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
 
 export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps) {
@@ -132,7 +101,7 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
 
   const types = TRACKR_INDUSTRY_TYPES[industry];
 
-  const { programmes, loading, errors, callsRemaining, fetchMissing } = useTrackrIndustry({
+  const { programmes, loading, cacheAge, refresh } = useTrackrIndustry({
     industry,
     types,
     season,
@@ -140,7 +109,7 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
 
   // Fetch on mount and when industry/season changes
   useEffect(() => {
-    fetchMissing();
+    refresh();
     setSelectedId(null);
     setTypeFilter("all");
     setMobileShowDetail(false);
@@ -189,16 +158,6 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
     [filtered, selectedId]
   );
 
-  // Cache age display — show oldest cache among loaded combos
-  const cacheAgeStr = useMemo(() => {
-    let oldest = 0;
-    for (const t of types) {
-      const c = getCached("UK", industry, t, season);
-      if (c) oldest = Math.max(oldest, c.ageMs);
-    }
-    return oldest > 0 ? formatCacheAge(oldest) : null;
-  }, [programmes, industry, types, season]);
-
   async function handleAdd(programme: TrackrProgramme) {
     const jobData = programmeToJob(programme);
     await addJob(jobData);
@@ -233,9 +192,6 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
           ))}
         </div>
       </div>
-
-      {/* ── Rate limit / error banners ── */}
-      <RateLimitBanner callsRemaining={callsRemaining} errors={errors} />
 
       {/* ── Filters row ── */}
       <div className="px-5 md:px-8 py-3 flex items-center gap-3 border-b border-border flex-wrap">
@@ -277,13 +233,13 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
 
         {/* Cache info + refresh */}
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
-          {cacheAgeStr && (
+          {cacheAge && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-1 font-mono">
-              <Clock className="w-2.5 h-2.5" />{cacheAgeStr}
+              <Clock className="w-2.5 h-2.5" />{cacheAge}
             </span>
           )}
           <button
-            onClick={() => fetchMissing()}
+            onClick={() => refresh()}
             disabled={loading}
             title="Refresh data"
             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
@@ -324,7 +280,7 @@ export default function OpportunitiesTab({ jobs, addJob }: OpportunitiesTabProps
                 <Search className="w-8 h-8 text-muted-foreground/40 mb-3" />
                 <p className="text-sm font-medium text-foreground">No programmes found</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {search ? "Try a different search term." : "No data cached yet — click refresh."}
+                  {search ? "Try a different search term." : "No opportunities available right now — check back soon."}
                 </p>
               </motion.div>
             ) : (

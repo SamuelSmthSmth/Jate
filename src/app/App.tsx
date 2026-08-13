@@ -3,12 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase, Users, ArchiveX as ArchiveIcon, Settings as SettingsIcon, Settings, Link2, Plus, LayoutGrid, List, LayoutDashboard, Lock,
   CalendarDays, X, Moon, Sun,
-  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, Copy, FileText, Share2, Compass,
+  ArrowUpDown, UserPlus, UserMinus, Download, Upload, LogOut, Pencil, Check, FileText, Share2, Compass,
 } from "lucide-react";
 import Papa from "papaparse";
-import { updateProfile } from "firebase/auth";
-import { doc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { supabase } from "../supabase";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAuth } from "../hooks/useAuth";
 import { useJobs } from "../hooks/useJobs";
@@ -80,7 +78,7 @@ const PAGE_TITLES: Record<NavItem, string> = {
   "settings":      "Settings",
 };
 
-// ─── Seed data (friends/lists only — jobs come from Firestore) ────────────────
+// ─── Seed data (friends/lists only — jobs come from Supabase) ────────────────
 
 
 
@@ -183,16 +181,14 @@ function LoadingScreen() {
 
 // ─── Login screen ─────────────────────────────────────────────────────────────
 
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  "auth/configuration-not-found": "Google Sign-In isn't enabled. In Firebase Console go to Authentication → Sign-in method → Google and enable it.",
-  "auth/invalid-email": "Invalid email address.",
-  "auth/wrong-password": "Incorrect email or password.",
-  "auth/invalid-credential": "Incorrect email or password.",
-  "auth/user-not-found": "No account found with that email.",
-  "auth/email-already-in-use": "An account with this email already exists. Try signing in instead.",
-  "auth/weak-password": "Password must be at least 6 characters.",
-  "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
-};
+const AUTH_ERROR_MESSAGES: Array<[string, string]> = [
+  ["Invalid login credentials", "Incorrect email or password."],
+  ["Email not confirmed", "Please check your email to confirm your account, then sign in."],
+  ["User already registered", "An account with this email already exists. Try signing in instead."],
+  ["Password should be at least", "Password must be at least 6 characters."],
+  ["Unable to validate email", "Invalid email address."],
+  ["Email rate limit exceeded", "Too many attempts. Please wait a moment and try again."],
+];
 
 function LoginScreen({
   onGoogleLogin,
@@ -210,8 +206,12 @@ function LoginScreen({
   const [authError, setAuthError] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
 
-  function friendlyError(code: string) {
-    return AUTH_ERROR_MESSAGES[code] ?? `Sign-in failed (${code || "unknown error"}).`;
+  function friendlyError(err: unknown) {
+    const message = (err as { message?: string })?.message ?? "";
+    for (const [needle, friendly] of AUTH_ERROR_MESSAGES) {
+      if (message.includes(needle)) return friendly;
+    }
+    return message || "Sign-in failed (unknown error).";
   }
 
   async function handleGoogle() {
@@ -220,8 +220,7 @@ function LoginScreen({
     try {
       await onGoogleLogin();
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code ?? "";
-      if (code !== "auth/popup-closed-by-user") setAuthError(friendlyError(code));
+      setAuthError(friendlyError(err));
     } finally {
       setSigning(false);
     }
@@ -238,8 +237,7 @@ function LoginScreen({
         await onEmailRegister(email, password);
       }
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code ?? "";
-      setAuthError(friendlyError(code));
+      setAuthError(friendlyError(err));
     } finally {
       setSigning(false);
     }
@@ -370,7 +368,7 @@ export default function App() {
       document.documentElement.style.setProperty('--accent-hex', savedAccent);
     }
   }, []);
-  const { user, loading, loginWithGoogle, logout } = useAuth();
+  const { user, loading, loginWithGoogle, logout, updatePrivacy, refreshUser } = useAuth();
   const { jobs, addJob, updateJob, deleteJob } = useJobs(user?.uid ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -392,7 +390,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const effectiveViewType = isMobile ? 'grid' : viewType;
-  const [copiedIcal, setCopiedIcal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
 
@@ -524,14 +521,6 @@ export default function App() {
     setSortDir(key === "deadline" ? "asc" : "desc");
   }
 
-  async function updatePrivacy(uid: string, isPublic: boolean) {
-    try {
-      await updateDoc(doc(db, "users", uid), { isPublic });
-    } catch (e) {
-      console.error("Error updating privacy:", e);
-    }
-  }
-
   // ── Display name update ─────────────────────────────────────────────────────
 
   async function handleSaveName() {
@@ -539,8 +528,8 @@ export default function App() {
     if (!trimmed || trimmed === user.displayName) { setEditingName(false); return; }
     setSavingName(true);
     try {
-      await updateProfile(auth.currentUser!, { displayName: trimmed });
-      await updateDoc(doc(db, "users", user.uid), { displayName: trimmed });
+      await supabase.from("profiles").update({ display_name: trimmed }).eq("id", user.uid);
+      await refreshUser();
     } finally {
       setSavingName(false);
       setEditingName(false);
@@ -1269,37 +1258,6 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* External Calendar Sync */}
-              <div>
-                <h2 className="text-xl font-semibold mb-6 text-foreground">External Calendar Sync</h2>
-                <div className="bg-card/30 backdrop-blur-md rounded-lg border border-border p-5 flex flex-col gap-4 shadow-sm">
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground">Subscribe via iCal</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Paste this link into Google Calendar (Other Calendars → From URL) or Apple Calendar to sync your application tracking timeline automatically.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      readOnly
-                      value={`${window.location.origin}/api/calendar?user=${user.uid}`}
-                      className="flex-1 px-3 py-2 rounded-md border border-border bg-input-background text-sm text-muted-foreground focus:outline-none font-mono text-xs overflow-hidden text-ellipsis"
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/api/calendar?user=${user.uid}`);
-                        setCopiedIcal(true);
-                        setTimeout(() => setCopiedIcal(false), 2000);
-                      }}
-                      className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 whitespace-nowrap"
-                    >
-                      {copiedIcal ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedIcal ? "Copied!" : "Copy Link"}
-                    </button>
                   </div>
                 </div>
               </div>

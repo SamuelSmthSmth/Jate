@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, updateDoc, arrayUnion, addDoc, limit, deleteDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "../supabase";
 
 export type FriendProfile = {
   id: string;
@@ -10,93 +9,102 @@ export type FriendProfile = {
   isPublic?: boolean;
 };
 
+function mapFriendProfile(row: Record<string, unknown>): FriendProfile {
+  return {
+    id: row.id as string,
+    displayName: (row.display_name as string) || "Unknown",
+    friendCode: (row.friend_code as string) || "",
+    photoURL: (row.photo_url as string) ?? undefined,
+    isPublic: (row.is_public as boolean) !== false,
+  };
+}
 
-// 1. useFriends
+/** Lists the current user's friends (via the `friends` junction table). */
 export function useFriends(userId: string | null) {
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!userId) {
       setFriends([]);
       setLoading(false);
       return;
     }
 
-    const unsub = onSnapshot(doc(db, "users", userId), async (snapshot) => {
-      if (!snapshot.exists()) {
-        setFriends([]);
-        setLoading(false);
-        return;
-      }
-      
-      const friendIds = snapshot.data().friends || [];
-      if (friendIds.length === 0) {
-        setFriends([]);
-        setLoading(false);
-        return;
-      }
+    const { data: links, error: linkErr } = await supabase
+      .from("friends")
+      .select("friend_id")
+      .eq("user_id", userId);
 
-      try {
-        const friendDocs = await Promise.all(
-          friendIds.map((id: string) => getDoc(doc(db, "users", id)))
-        );
-        
-        const friendsList = friendDocs
-          .filter(d => d.exists())
-          .map(d => ({
-            id: d.id,
-            displayName: d.data()?.displayName || "Unknown",
-            friendCode: d.data()?.friendCode || "",
-            photoURL: d.data()?.photoURL,
-            isPublic: d.data()?.isPublic !== false,
-          }));
-          
-        setFriends(friendsList);
-      } catch (err) {
-        console.error("Failed to fetch friends:", err);
-      } finally {
-        setLoading(false);
-      }
-    });
+    if (linkErr) {
+      console.error("Failed to fetch friends:", linkErr);
+      setLoading(false);
+      return;
+    }
 
-    return () => unsub();
+    const friendIds = (links ?? []).map((l) => l.friend_id as string);
+    if (friendIds.length === 0) {
+      setFriends([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: profiles, error } = await supabase
+      .from("profiles")
+      .select("id, display_name, friend_code, photo_url, is_public")
+      .in("id", friendIds);
+
+    if (error) {
+      console.error("Failed to fetch friends:", error);
+      setLoading(false);
+      return;
+    }
+
+    setFriends((profiles ?? []).map(mapFriendProfile));
+    setLoading(false);
   }, [userId]);
 
-  return { friends, loading };
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { friends, loading, refresh };
 }
 
-
-
-// 4. addFriendByCode
+/** Adds a friend by their friend code (mutual: two junction rows). */
 export async function addFriendByCode(currentUserId: string, friendCode: string) {
-  const q = query(collection(db, "users"), where("friendCode", "==", friendCode), limit(1));
-  const snapshot = await getDocs(q);
-  
-  if (snapshot.empty) {
-    throw new Error("Friend code not found");
-  }
+  const normalized = friendCode.trim().toUpperCase();
 
-  const targetDoc = snapshot.docs[0];
-  const targetUid = targetDoc.id;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, friend_code, photo_url, is_public")
+    .eq("friend_code", normalized)
+    .limit(1)
+    .maybeSingle();
 
-  if (targetUid === currentUserId) {
-    throw new Error("Cannot add yourself");
-  }
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Friend code not found");
+  if (data.id === currentUserId) throw new Error("Cannot add yourself");
 
-  // Update current user's friends list
-  await updateDoc(doc(db, "users", currentUserId), {
-    friends: arrayUnion(targetUid)
-  });
+  const { error: insertErr } = await supabase.from("friends").insert([
+    { user_id: currentUserId, friend_id: data.id },
+    { user_id: data.id, friend_id: currentUserId },
+  ]);
+  if (insertErr) throw new Error(insertErr.message);
 
-  // Update target user's friends list
-  await updateDoc(doc(db, "users", targetUid), {
-    friends: arrayUnion(currentUserId)
-  });
-
-  return {
-    id: targetUid,
-    ...targetDoc.data()
-  };
+  return mapFriendProfile(data);
 }
 
+/** Removes the friendship link in both directions. */
+export async function removeFriend(userId: string, friendId: string) {
+  await supabase
+    .from("friends")
+    .delete()
+    .eq("user_id", userId)
+    .eq("friend_id", friendId);
+  await supabase
+    .from("friends")
+    .delete()
+    .eq("user_id", friendId)
+    .eq("friend_id", userId);
+}

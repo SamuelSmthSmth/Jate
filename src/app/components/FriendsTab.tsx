@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { UserMinus, ArrowLeft } from "lucide-react";
-import { useFriends, addFriendByCode, FriendProfile } from "../../hooks/useSocial";
-import { doc, updateDoc, arrayRemove, query, collection, where, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase";
+import { useFriends, addFriendByCode, removeFriend, FriendProfile } from "../../hooks/useSocial";
+import { supabase } from "../../supabase";
+import { mapJobRow } from "../../hooks/useJobs";
 import JobCard from "./JobCard";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -15,7 +15,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default function FriendsTab({ userId }: { userId: string }) {
-  const { friends, loading } = useFriends(userId);
+  const { friends, loading, refresh } = useFriends(userId);
 
   const [newFriendCode, setNewFriendCode] = useState("");
   const [adding, setAdding] = useState(false);
@@ -29,14 +29,16 @@ export default function FriendsTab({ userId }: { userId: string }) {
       setFriendJobs([]);
       return;
     }
-    const q = query(
-      collection(db, "jobs"),
-      where("userId", "==", viewingFriend.id)
-    );
-    const unsub = onSnapshot(q, (snapshot) => {
-      setFriendJobs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsub();
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("user_id", viewingFriend.id)
+        .order("created_at", { ascending: true });
+      if (!cancelled && !error && data) setFriendJobs(data.map(mapJobRow));
+    })();
+    return () => { cancelled = true; };
   }, [viewingFriend]);
 
 
@@ -48,6 +50,7 @@ export default function FriendsTab({ userId }: { userId: string }) {
     try {
       await addFriendByCode(userId, code);
       setNewFriendCode("");
+      refresh();
     } catch (err: any) {
       setError(err.message || "Failed to add friend");
     } finally {
@@ -57,12 +60,8 @@ export default function FriendsTab({ userId }: { userId: string }) {
 
   const handleRemoveFriend = async (friendId: string) => {
     try {
-      await updateDoc(doc(db, "users", userId), {
-        friends: arrayRemove(friendId)
-      });
-      await updateDoc(doc(db, "users", friendId), {
-        friends: arrayRemove(userId)
-      });
+      await removeFriend(userId, friendId);
+      refresh();
     } catch (err) {
       console.error("Failed to remove friend", err);
     }
