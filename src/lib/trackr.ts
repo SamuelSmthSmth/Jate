@@ -38,11 +38,11 @@ export const TRACKR_TYPES: { id: TrackrType; label: string; short: string }[] = 
 ];
 
 /** Seasons available per industry — the Trackr API's active/legacy seasons differ
- *  per industry (Finance/Tech are on 2027, Law is still on 2026). */
+ *  per industry. */
 export const TRACKR_INDUSTRY_SEASONS: Record<TrackrIndustry, TrackrSeason[]> = {
   Finance: ["2027", "2026"],
   Tech: ["2027", "2026"],
-  Law: ["2026", "2025"],
+  Law: ["2027", "2026"],
 };
 
 /** Which types to show per industry (avoids fetching combos that return 0 results) */
